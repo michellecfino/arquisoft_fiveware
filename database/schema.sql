@@ -16,12 +16,21 @@ CREATE TABLE nucleo.empresas (
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ÁREAS
+CREATE TABLE nucleo.areas (
+    id_area SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL
+);
+
 -- PROYECTOS
 CREATE TABLE nucleo.proyectos (
     id_proyecto SERIAL PRIMARY KEY,
-    empresa_id INT NOT NULL,
+    id_empresa INT NOT NULL,
+    id_area INT NOT NULL,
     nombre VARCHAR(150) NOT NULL,
-    FOREIGN KEY (empresa_id) REFERENCES nucleo.empresas(id_empresa)
+
+    FOREIGN KEY (id_empresa) REFERENCES nucleo.empresas(id_empresa),
+    FOREIGN KEY (id_area) REFERENCES nucleo.areas(id_area)
 );
 
 -- USUARIOS

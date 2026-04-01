@@ -47,22 +47,49 @@ resource "aws_security_group" "traffic_django" {
     })
 }
 
-# Define el grupo de seguridad para la base de datos ()
-resource "aws_security_group" "traffic_db" {
-  name        = "${var.project_prefix}-traffic-db"
-  description = "Allow PostgreSQL access"
+# 
+resource "aws_security_group" "ec2_sg" {
+  name = "ec2-sg"
 
   ingress {
-    description = "Traffic from anywhere to DB"
-    from_port   = 0000
-    to_port     = 0000
+    from_port   = 8000
+    to_port     = 8000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = merge(local.common_tags, {
-    Name = "${var.project_prefix}-traffic-db"
-  })
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Define el grupo de seguridad para la base de datos (5432)
+resource "aws_security_group" "db_sg" {
+  name = "db-sg"
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ec2_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 # Recurso. Define el grupo de seguridad para el tráfico SSH (22) y permite todo el tráfico saliente.
@@ -120,13 +147,16 @@ output "database_private_ip" {
 
 # Define la instancia EC2 para el Manejador de Reportes
 resource "aws_instance" "reportes" {
-  count         = var.instance_count
-  ami           = "ami-0c55b159cbfafe1f0" # Ubuntu
+  count = var.instance_count
+
+  ami           = "ami-ubuntu-24"
   instance_type = var.instance_type
 
-  key_name = var.key_name
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
 
-  vpc_security_group_ids = [aws_security_group.sg.id]
+  root_block_device {
+    volume_size = 12
+  }
 
   user_data = file("user_data.sh")
 
@@ -136,32 +166,23 @@ resource "aws_instance" "reportes" {
 }
 
 # Define la instancia EC2 para la base de datos PostgreSQL.
-# Esta instancia incluye un script de creación para instalar y configurar PostgreSQL.
-# El script crea un usuario y una base de datos, y ajusta la configuración para permitir conexiones remotas.
-resource "aws_instance" "database" {
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = var.instance_type
-  associate_public_ip_address = true
-  vpc_security_group_ids      = [aws_security_group.traffic_db.id, aws_security_group.traffic_ssh.id]
+resource "aws_instance" "reportes" {
+  count = var.instance_count
 
-  user_data = <<-EOT
-              #!/bin/bash
+  ami           = "ami-ubuntu-24"
+  instance_type = var.instance_type
 
-              sudo apt-get update -y
-              sudo apt-get install -y postgresql postgresql-contrib
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
 
-              sudo -u postgres psql -c "CREATE USER fiveware WITH PASSWORD 'fiveware';"
-              sudo -u postgres createdb -O monitoring_user monitoring_db
-              echo "host all all 0.0.0.0/0 trust" | sudo tee -a /etc/postgresql/16/main/pg_hba.conf
-              echo "listen_addresses='*'" | sudo tee -a /etc/postgresql/16/main/postgresql.conf
-              echo "max_connections=2000" | sudo tee -a /etc/postgresql/16/main/postgresql.conf
-              sudo service postgresql restart
-              EOT
+  root_block_device {
+    volume_size = 12
+  }
 
-  tags = merge(local.common_tags, {
-    Name = "${var.project_prefix}-db"
-    Role = "database"
-  })
+  user_data = file("user_data.sh")
+
+  tags = {
+    Name = "reportes-${count.index}"
+  }
 }
 
 # Recurso. Define la instancia EC2 para la aplicación (Django).
@@ -181,18 +202,8 @@ resource "aws_lb" "lb" {
 #          EXTRA
 # ----------------------------
 
-# Busca la AMI más reciente de Ubuntu 24.04 usando los filtros especificados.
-data "aws_ami" "ubuntu" {
-    most_recent = true
-    owners      = ["099720109477"]
-
-    filter {
-        name   = "name"
-        values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
-    }
-
-    filter {
-        name   = "virtualization-type"
-        values = ["hvm"]
-    }
+# Recurso del API Gataway.
+resource "aws_apigatewayv2_api" "api" {
+  name          = "reportes-api"
+  protocol_type = "HTTP"
 }
