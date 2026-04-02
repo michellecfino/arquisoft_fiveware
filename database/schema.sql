@@ -64,7 +64,6 @@ CREATE TABLE IF NOT EXISTS costos_nube.consumos_crudos (
     fecha_consumo DATE NOT NULL,
     tipo_servicio VARCHAR(100) NOT NULL,
     region VARCHAR(80) NULL,
-    grupo_recurso VARCHAR(150) NULL,
     costo NUMERIC(14,4) NOT NULL,
     moneda VARCHAR(10) NOT NULL,
     proyecto VARCHAR(150) NULL,
