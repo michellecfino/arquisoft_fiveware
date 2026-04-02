@@ -46,15 +46,6 @@ CREATE TABLE IF NOT EXISTS nucleo.usuarios (
 -- TABLAS COSTOS NUBE
 -- =========================
 
-CREATE TABLE IF NOT EXISTS costos_nube.cuentas_cloud (
-    id_cuenta_cloud SERIAL PRIMARY KEY,
-    id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa),
-    proveedor VARCHAR(30) NOT NULL,
-    identificador_externo VARCHAR(120) NOT NULL,
-    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (proveedor, identificador_externo)
-);
-
 CREATE TABLE IF NOT EXISTS costos_nube.consumos_crudos (
     id_consumo_crudo BIGSERIAL PRIMARY KEY,
     id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa),
