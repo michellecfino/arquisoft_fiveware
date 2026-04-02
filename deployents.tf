@@ -13,6 +13,65 @@
 # ******************************************************************
 
 # ----------------------------
+#        BASE DE DATOS
+# ----------------------------
+resource "aws_security_group" "db_sg" {
+  name        = "db-sg"
+  description = "Permite acceso a PostgreSQL solo desde EC2"
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ec2_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_db_instance" "postgres" {
+  identifier = "costos-db"
+
+  engine            = "postgres"
+  engine_version    = "15"
+  instance_class    = "db.t3.micro"
+
+  allocated_storage = 20
+  storage_type      = "gp2"
+
+  db_name  = "costos"
+  username = "admin"
+  password = "Admin123!"
+
+  db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
+  vpc_security_group_ids = [aws_security_group.db_sg.id]
+
+  publicly_accessible = false   # 
+  multi_az            = false
+
+  backup_retention_period = 0   # para experimento (más barato)
+
+  skip_final_snapshot = true
+
+  tags = {
+    Name = "costos-db"
+  }
+}
+
+output "db_endpoint" {
+  value = aws_db_instance.postgres.endpoint
+}
+
+output "db_port" {
+  value = aws_db_instance.postgres.port
+}
+
+# ----------------------------
 #         VARIABLES
 # ----------------------------
 
@@ -73,24 +132,6 @@ resource "aws_security_group" "ec2_sg" {
   }
 }
 
-# Define el grupo de seguridad para la base de datos (5432)
-resource "aws_security_group" "db_sg" {
-  name = "db-sg"
-
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ec2_sg.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
 
 # Recurso. Define el grupo de seguridad para el tráfico SSH (22) y permite todo el tráfico saliente.
 resource "aws_security_group" "traffic_ssh" {
@@ -135,37 +176,11 @@ output "XXXX_private_ip" {
   value       = aws_instance.XXXX.private_ip
 }
 
-# Muestra la dirección IP privada de la instancia de la base de datos PostgreSQL.
-output "database_private_ip" {
-  description = "Private IP address for the PostgreSQL database instance"
-  value       = aws_instance.database.private_ip
-}
-
 # ----------------------------
 #         INSTANCIAS
 # ----------------------------
 
 # Define la instancia EC2 para el Manejador de Reportes
-resource "aws_instance" "reportes" {
-  count = var.instance_count
-
-  ami           = "ami-ubuntu-24"
-  instance_type = var.instance_type
-
-  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
-
-  root_block_device {
-    volume_size = 12
-  }
-
-  user_data = file("user_data.sh")
-
-  tags = {
-    Name = "reportes-${count.index}"
-  }
-}
-
-# Define la instancia EC2 para la base de datos PostgreSQL.
 resource "aws_instance" "reportes" {
   count = var.instance_count
 
