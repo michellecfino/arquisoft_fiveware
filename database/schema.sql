@@ -2,7 +2,7 @@
 -- CREACIÓN DE ESQUEMAS
 -- =========================
 CREATE SCHEMA IF NOT EXISTS nucleo;
-CREATE SCHEMA IF NOT EXISTS costos_nube;
+CREATE SCHEMA IF NOT EXISTS nube;
 CREATE SCHEMA IF NOT EXISTS reportes;
 
 -- =========================
@@ -43,15 +43,15 @@ CREATE TABLE IF NOT EXISTS nucleo.usuarios (
 );
 
 -- =========================
--- TABLAS COSTOS NUBE
+-- TABLAS NUBE
 -- =========================
 
-CREATE TABLE IF NOT EXISTS costos_nube.consumos_crudos (
+CREATE TABLE IF NOT EXISTS nube.consumos_crudos (
     id_consumo_crudo BIGSERIAL PRIMARY KEY,
     id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa),
     id_area INT NULL REFERENCES nucleo.areas(id_area),
     id_proyecto INT NULL REFERENCES nucleo.proyectos(id_proyecto),
-    id_cuenta_cloud INT NOT NULL REFERENCES costos_nube.cuentas_cloud(id_cuenta_cloud),
+    id_cuenta_cloud INT NOT NULL REFERENCES nube.cuentas_cloud(id_cuenta_cloud),
     fecha_consumo DATE NOT NULL,
     tipo_servicio VARCHAR(100) NOT NULL,
     region VARCHAR(80) NULL,
@@ -63,10 +63,10 @@ CREATE TABLE IF NOT EXISTS costos_nube.consumos_crudos (
 );
 
 CREATE INDEX IF NOT EXISTS idx_consumos_crudos_empresa_fecha
-ON costos_nube.consumos_crudos (id_empresa, fecha_consumo);
+ON nube.consumos_crudos (id_empresa, fecha_consumo);
 
 CREATE INDEX IF NOT EXISTS idx_consumos_crudos_empresa_proyecto_fecha
-ON costos_nube.consumos_crudos (id_empresa, id_proyecto, fecha_consumo);
+ON nube.consumos_crudos (id_empresa, id_proyecto, fecha_consumo);
 
 -- =========================
 -- TABLAS AGREGADAS REPORTES
