@@ -1,136 +1,115 @@
-
 -- =========================
 -- CREACIÓN DE ESQUEMAS
 -- =========================
-CREATE SCHEMA IF NOT EXISTS core;
-CREATE SCHEMA IF NOT EXISTS billing;
-CREATE SCHEMA IF NOT EXISTS analytics;
+CREATE SCHEMA IF NOT EXISTS nucleo;
+CREATE SCHEMA IF NOT EXISTS nube;
+CREATE SCHEMA IF NOT EXISTS reportes;
 
 -- =========================
--- TABLAS CORE
+-- TABLAS NÚCLEO
 -- =========================
 
--- EMPRESAS
-CREATE TABLE core.empresas (
+CREATE TABLE IF NOT EXISTS nucleo.empresas (
     id_empresa SERIAL PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- PROYECTOS
-CREATE TABLE core.proyectos (
+CREATE TABLE IF NOT EXISTS nucleo.areas (
+    id_area SERIAL PRIMARY KEY,
+    id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa),
+    nombre VARCHAR(120) NOT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (id_empresa, nombre)
+);
+
+CREATE TABLE IF NOT EXISTS nucleo.proyectos (
     id_proyecto SERIAL PRIMARY KEY,
-    empresa_id INT NOT NULL,
+    id_empresa INT NOT NULL,
+    id_area INT NOT NULL,
     nombre VARCHAR(150) NOT NULL,
-    FOREIGN KEY (empresa_id) REFERENCES core.empresas(id_empresa)
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_empresa) REFERENCES nucleo.empresas(id_empresa),
+    FOREIGN KEY (id_area) REFERENCES nucleo.areas(id_area),
+    UNIQUE (id_empresa, nombre)
 );
 
--- USUARIOS
-CREATE TABLE core.usuarios (
+CREATE TABLE IF NOT EXISTS nucleo.usuarios (
     id_usuario SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
-    email VARCHAR(150) UNIQUE NOT NULL,
-    empresa_id INT NOT NULL,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (empresa_id) REFERENCES core.empresas(id_empresa)
+    correo VARCHAR(150) UNIQUE NOT NULL,
+    id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa),
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- =========================
--- TABLA CRUDA (BILLING)
+-- TABLAS NUBE
 -- =========================
-CREATE TABLE billing.consumo_cloud (
-    id_consumo BIGSERIAL PRIMARY KEY,
-    empresa_id INT NOT NULL,
-    proyecto_id INT NOT NULL,
-    servicio VARCHAR(100),
-    costo NUMERIC(12,2) NOT NULL,
-    fecha TIMESTAMP NOT NULL,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (empresa_id) REFERENCES core.empresas(id_empresa),
-    FOREIGN KEY (proyecto_id) REFERENCES core.proyectos(id_proyecto)
+CREATE TABLE IF NOT EXISTS nube.consumos_crudos (
+    id_consumo_crudo BIGSERIAL PRIMARY KEY,
+    id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa),
+    id_area INT NULL REFERENCES nucleo.areas(id_area),
+    id_proyecto INT NULL REFERENCES nucleo.proyectos(id_proyecto),
+    id_cuenta_cloud INT NOT NULL REFERENCES nube.cuentas_cloud(id_cuenta_cloud),
+    fecha_consumo DATE NOT NULL,
+    tipo_servicio VARCHAR(100) NOT NULL,
+    region VARCHAR(80) NULL,
+    costo NUMERIC(14,4) NOT NULL,
+    moneda VARCHAR(10) NOT NULL,
+    proyecto VARCHAR(150) NULL,
+    id_recurso_crudo TEXT NOT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- ÍNDICE PARA OPTIMIZAR BÚSQUEDAS
-CREATE INDEX idx_consumo_empresa_proyecto_fecha
-ON billing.consumo_cloud (empresa_id, proyecto_id, fecha);
+CREATE INDEX IF NOT EXISTS idx_consumos_crudos_empresa_fecha
+ON nube.consumos_crudos (id_empresa, fecha_consumo);
+
+CREATE INDEX IF NOT EXISTS idx_consumos_crudos_empresa_proyecto_fecha
+ON nube.consumos_crudos (id_empresa, id_proyecto, fecha_consumo);
 
 -- =========================
--- TABLA AGREGADA (ANALYTICS)
+-- TABLAS AGREGADAS REPORTES
 -- =========================
-CREATE TABLE analytics.resumen_mensual_costos (
-    empresa_id INT NOT NULL,
-    proyecto_id INT NOT NULL,
+
+CREATE TABLE IF NOT EXISTS reportes.resumen_mensual_costos (
+    id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa),
+    id_area INT NOT NULL REFERENCES nucleo.areas(id_area),
+    id_proyecto INT NOT NULL REFERENCES nucleo.proyectos(id_proyecto),
     anio INT NOT NULL,
     mes INT NOT NULL,
-
-    costo_total NUMERIC(14,2) NOT NULL DEFAULT 0,
-    ultima_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (empresa_id, proyecto_id, anio, mes),
-
-    FOREIGN KEY (empresa_id) REFERENCES core.empresas(id_empresa),
-    FOREIGN KEY (proyecto_id) REFERENCES core.proyectos(id_proyecto)
+    moneda VARCHAR(10) NOT NULL,
+    costo_total NUMERIC(14,4) NOT NULL DEFAULT 0,
+    cantidad_registros INT NOT NULL DEFAULT 0,
+    ultima_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_empresa, id_area, id_proyecto, anio, mes)
 );
 
--- =========================
--- FUNCIÓN DE AGREGACIÓN
--- =========================
-CREATE OR REPLACE FUNCTION analytics.actualizar_resumen_mensual()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_anio INT;
-    v_mes INT;
-BEGIN
-    v_anio := EXTRACT(YEAR FROM NEW.fecha);
-    v_mes := EXTRACT(MONTH FROM NEW.fecha);
+CREATE TABLE IF NOT EXISTS reportes.desglose_mensual_servicios (
+    id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa),
+    id_area INT NOT NULL REFERENCES nucleo.areas(id_area),
+    id_proyecto INT NOT NULL REFERENCES nucleo.proyectos(id_proyecto),
+    anio INT NOT NULL,
+    mes INT NOT NULL,
+    tipo_servicio VARCHAR(100) NOT NULL,
+    cantidad_registros INT NOT NULL DEFAULT 0,
+    costo_total NUMERIC(14,4) NOT NULL DEFAULT 0,
+    moneda VARCHAR(10) NOT NULL,
+    ultima_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_empresa, id_area, id_proyecto, anio, mes, tipo_servicio)
+);
 
-    INSERT INTO analytics.resumen_mensual_costos (
-        empresa_id,
-        proyecto_id,
-        anio,
-        mes,
-        costo_total
-    )
-    VALUES (
-        NEW.empresa_id,
-        NEW.proyecto_id,
-        v_anio,
-        v_mes,
-        NEW.costo
-    )
-    ON CONFLICT (empresa_id, proyecto_id, anio, mes)
-    DO UPDATE SET
-        costo_total = analytics.resumen_mensual_costos.costo_total + EXCLUDED.costo_total,
-        ultima_actualizacion = CURRENT_TIMESTAMP;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- =========================
--- TRIGGER (CLAVE DEL EXPERIMENTO)
--- =========================
-CREATE TRIGGER trigger_actualizar_resumen
-AFTER INSERT ON billing.consumo_cloud
-FOR EACH ROW
-EXECUTE FUNCTION analytics.actualizar_resumen_mensual();
+CREATE INDEX IF NOT EXISTS idx_desglose_empresa_proyecto_periodo
+ON reportes.desglose_mensual_servicios (id_empresa, id_proyecto, anio, mes);
 
 -- =========================
 -- TABLA DE NOTIFICACIONES
 -- =========================
-CREATE TABLE core.notificaciones (
+
+CREATE TABLE IF NOT EXISTS nucleo.notificaciones (
     id_notificacion BIGSERIAL PRIMARY KEY,
-    id_usuario INT NOT NULL,
-    id_proyecto INT,
-    fecha_envio TIMESTAMP,
-    estado VARCHAR(50),
-    intentos INT DEFAULT 0,
-
-    FOREIGN KEY (id_usuario) REFERENCES core.usuarios(id_usuario)
+    id_usuario INT NOT NULL REFERENCES nucleo.usuarios(id_usuario),
+    id_proyecto INT NULL REFERENCES nucleo.proyectos(id_proyecto),
+    fecha_envio TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    estado VARCHAR(50) NOT NULL
 );
-
-INSERT INTO billing.consumo_cloud (
-    empresa_id, proyecto_id, servicio, costo, fecha
-)
-VALUES (1, 1, 'EC2', 1000, NOW());
