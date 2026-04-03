@@ -1,0 +1,12 @@
+{
+  "proveedor": "AZURE",
+  "id_cuenta_cloud": "6675ed40-bc6e-4940-b5b5-3d2b1ec8b2f2",
+  "fecha_consumo": "2026-02-01",
+  "tipo_servicio": "App Service",
+  "region": "us east 2",
+  "grupo_recurso": "rg-bite-sites-main",
+  "costo": 0.408,
+  "moneda": "USD",
+  "proyecto": "bite-sites",
+  "id_recurso_crudo": "/subscriptions/6675ed40-bc6e-4940-b5b5-3d2b1ec8b2f2/resourcegroups/rg-bite-sites-main/providers/microsoft.web/serverfarms/asp-bite-co-sites-main"
+}
