@@ -1,6 +1,7 @@
 import calendar
 import json
 import random
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
@@ -40,9 +41,11 @@ RESOURCE_PREFIX_POR_PROVEEDOR = {
 
 REGISTROS_MINIMOS_POR_PROYECTO_MES = 20
 SERVICIOS_MINIMOS_POR_PROYECTO_MES = 7
-TIMEOUT_REQUEST = 5
-MAX_WORKERS_HTTP = 32
-TAMANIO_BATCH_HTTP = 500
+
+TIMEOUT_REQUEST = 20
+MAX_WORKERS_HTTP = 12
+TAMANIO_BATCH_HTTP = 200
+MAX_REINTENTOS_HTTP = 3
 
 
 def obtener_servicios_cloud(cur):
@@ -82,6 +85,7 @@ def obtener_regiones(cur):
         """
         SELECT id_region, nombre
         FROM nube.regiones
+        ORDER BY id_region
         """
     )
     rows = cur.fetchall()
@@ -105,15 +109,10 @@ def ultimo_dia_permitido(anio, mes):
 
 
 def generar_dias_distribuidos(anio, mes, cantidad):
-    """
-    Devuelve exactamente 'cantidad' días dentro del mes.
-    Puede repetir días cuando cantidad > número de días disponibles.
-    Abril 2026 queda limitado al día 9.
-    """
     ultimo_dia = ultimo_dia_permitido(anio, mes)
     dias_disponibles = list(range(1, ultimo_dia + 1))
 
-    if cantidad <= ultimo_dia:
+    if cantidad <= len(dias_disponibles):
         return sorted(random.sample(dias_disponibles, cantidad))
 
     resultado = dias_disponibles.copy()
@@ -123,35 +122,24 @@ def generar_dias_distribuidos(anio, mes, cantidad):
 
 
 def agrupar_servicios_por_proveedor(servicios):
-    servicios_por_proveedor = {
-        "AWS": [],
-        "AZURE": [],
-        "GCP": [],
-    }
-    for servicio in servicios:
-        proveedor = servicio[2]
-        servicios_por_proveedor[proveedor].append(servicio)
-    return servicios_por_proveedor
-
-
-def obtener_servicios_distintos_para_proyecto_mes(servicios, cantidad_minima):
-    """
-    Selecciona al menos N servicios distintos globales.
-    Si no existen suficientes, falla explícitamente.
-    """
-    servicios_unicos = {}
+    data = {"AWS": [], "AZURE": [], "GCP": []}
     for s in servicios:
-        servicios_unicos[s[0]] = s
+        data[s[2]].append(s)
+    return data
 
-    servicios_lista = list(servicios_unicos.values())
 
-    if len(servicios_lista) < cantidad_minima:
+def obtener_servicios_distintos(servicios, cantidad):
+    unicos = {}
+    for s in servicios:
+        unicos[s[0]] = s
+
+    lista = list(unicos.values())
+    if len(lista) < cantidad:
         raise RuntimeError(
-            f"Se requieren al menos {cantidad_minima} servicios cloud distintos "
-            f"y solo hay {len(servicios_lista)} cargados."
+            f"Se requieren al menos {cantidad} servicios distintos y solo hay {len(lista)}"
         )
 
-    return random.sample(servicios_lista, cantidad_minima)
+    return random.sample(lista, cantidad)
 
 
 def construir_payload(proyecto, servicio, id_region, anio, mes, dia, consecutivo):
@@ -199,7 +187,7 @@ def generar_lote_completo(proyectos, servicios, regiones_por_nombre):
 
     for proveedor, regiones in REGIONES_POR_PROVEEDOR.items():
         if not servicios_por_proveedor[proveedor]:
-            raise RuntimeError(f"No hay servicios cargados para proveedor {proveedor}")
+            raise RuntimeError(f"No hay servicios para proveedor {proveedor}")
         for region in regiones:
             if region not in regiones_por_nombre:
                 raise RuntimeError(f"No existe la región '{region}' en nube.regiones")
@@ -209,7 +197,7 @@ def generar_lote_completo(proyectos, servicios, regiones_por_nombre):
 
     for proyecto_idx, proyecto in enumerate(proyectos):
         for periodo_idx, (anio, mes) in enumerate(PERIODOS):
-            servicios_base = obtener_servicios_distintos_para_proyecto_mes(
+            servicios_base = obtener_servicios_distintos(
                 servicios,
                 SERVICIOS_MINIMOS_POR_PROYECTO_MES,
             )
@@ -284,32 +272,59 @@ def insertar_crudo_masivo(cur, lote):
 
 
 def post_agregador(payload, session):
-    response = session.post(
-        AGREGADOR_URL,
-        headers={"Content-Type": "application/json"},
-        data=json.dumps(payload),
-        timeout=TIMEOUT_REQUEST,
-    )
-    response.raise_for_status()
+    ultimo_error = None
+
+    for intento in range(1, MAX_REINTENTOS_HTTP + 1):
+        try:
+            response = session.post(
+                AGREGADOR_URL,
+                headers={"Content-Type": "application/json"},
+                data=json.dumps(payload),
+                timeout=TIMEOUT_REQUEST,
+            )
+            response.raise_for_status()
+            return True
+        except Exception as e:
+            ultimo_error = e
+            if intento < MAX_REINTENTOS_HTTP:
+                time.sleep(0.7 * intento)
+
+    return ultimo_error
 
 
-def enviar_lote_agregador(lote):
+def enviar_batch_agregador(batch, numero_batch, total_batches):
     enviados = 0
     fallidos = 0
 
+    print(
+        f"[BATCH {numero_batch}/{total_batches}] Enviando {len(batch)} registros al agregador..."
+    )
+
     with requests.Session() as session:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS_HTTP) as executor:
-            futures = [
-                executor.submit(post_agregador, payload, session)
-                for payload in lote
-            ]
+            futures = [executor.submit(post_agregador, payload, session) for payload in batch]
 
+            procesados = 0
             for future in as_completed(futures):
-                try:
-                    future.result()
+                resultado = future.result()
+                procesados += 1
+
+                if resultado is True:
                     enviados += 1
-                except Exception:
+                else:
                     fallidos += 1
+
+                if procesados % 50 == 0 or procesados == len(batch):
+                    print(
+                        f"[BATCH {numero_batch}/{total_batches}] "
+                        f"Procesados={procesados}/{len(batch)} "
+                        f"ok={enviados} fail={fallidos}"
+                    )
+
+    print(
+        f"[BATCH {numero_batch}/{total_batches}] Finalizado. "
+        f"Enviados={enviados}, fallidos={fallidos}"
+    )
 
     return enviados, fallidos
 
@@ -332,6 +347,7 @@ def main():
 
         print(f"Proyectos encontrados: {len(proyectos)}")
         print(f"Servicios encontrados: {len(servicios)}")
+        print("Generando lote completo único...")
 
         lote = generar_lote_completo(
             proyectos=proyectos,
@@ -339,36 +355,43 @@ def main():
             regiones_por_nombre=regiones_por_nombre,
         )
 
-        print(f"Total de registros a insertar: {len(lote)}")
-        print(
-            f"Configuración: {REGISTROS_MINIMOS_POR_PROYECTO_MES} registros por proyecto/mes, "
-            f"{SERVICIOS_MINIMOS_POR_PROYECTO_MES} servicios mínimos por proyecto/mes"
-        )
+        print(f"Total registros generados: {len(lote)}")
+        print("Insertando en BD...")
 
         insertar_crudo_masivo(cur, lote)
         conn.commit()
-        print("Inserción en BD completada.")
+
+        print(f"Inserción BD completada: {len(lote)} registros")
+
+        lotes_http = list(chunks(lote, TAMANIO_BATCH_HTTP))
+        total_batches = len(lotes_http)
 
         enviados_total = 0
         fallidos_total = 0
 
-        for idx, batch in enumerate(chunks(lote, TAMANIO_BATCH_HTTP), start=1):
-            enviados, fallidos = enviar_lote_agregador(batch)
+        for idx, batch in enumerate(lotes_http, start=1):
+            enviados, fallidos = enviar_batch_agregador(
+                batch=batch,
+                numero_batch=idx,
+                total_batches=total_batches,
+            )
             enviados_total += enviados
             fallidos_total += fallidos
+
             print(
-                f"Batch HTTP {idx}: enviados={enviados}, fallidos={fallidos}, tamaño={len(batch)}"
+                f"[ACUMULADO] batches={idx}/{total_batches} "
+                f"enviados={enviados_total} fallidos={fallidos_total}"
             )
 
-        print(
-            f"Proceso completado. BD insertados={len(lote)}, "
-            f"agregador enviados={enviados_total}, fallidos={fallidos_total}"
-        )
+        print("Proceso terminado.")
+        print(f"BD insertados: {len(lote)}")
+        print(f"Agregador enviados: {enviados_total}")
+        print(f"Agregador fallidos: {fallidos_total}")
 
-    except Exception:
+    except Exception as e:
         conn.rollback()
+        print(f"[ERROR] Se hizo rollback por: {e}")
         raise
-
     finally:
         conn.close()
 
