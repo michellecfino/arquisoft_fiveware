@@ -1,0 +1,39 @@
+services:
+  # La Base de Datos
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: bit_db
+      POSTGRES_USER: admin_user
+      POSTGRES_PASSWORD: PasswordSegura123!
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+  # El Broker de Mensajes
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"   # Puerto de mensajes
+      - "15672:15672" # Dashboard (usuario/pass: guest/guest)
+
+
+  manejador_reportes:
+    build: ./manejador_reportes
+    ports:
+      - "8001:8001"
+    environment:
+      DB_HOST: db
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      - db
+      - rabbitmq
+
+  # El Worker de Email (El que procesa)
+  email_worker:
+    build: ./workers
+    environment:
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      - rabbitmq

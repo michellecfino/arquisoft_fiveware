@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def seed_database():
-    print("Iniciando el proceso de Seeding en AWS RDS...")
+    print("Iniciando Seeding")
     try:
         conn = psycopg2.connect(
             host=os.getenv("DB_HOST"),
@@ -16,50 +16,59 @@ def seed_database():
         )
         cur = conn.cursor()
 
-        # 1. Insertar 1,000 Empresas
         print("Insertando 1,000 empresas...")
-        empresas = [(f"Empresa Corporativa {i}", f"NIT-{1000+i}", "Tecnología") for i in range(1, 1001)]
-        execute_batch(cur, """
-            INSERT INTO core.empresas (nombre, nit, sector) 
-            VALUES (%s, %s, %s)
-        """, empresas)
-
-        # Obtenemos los IDs generados para las empresas
-        cur.execute("SELECT id_empresa FROM core.empresas;")
+        empresas = [(f"Empresa Corp {i}",) for i in range(1, 1001)]
+        execute_batch(cur, "INSERT INTO nucleo.empresas (nombre) VALUES (%s) RETURNING id_empresa;", empresas)
+        
+        cur.execute("SELECT id_empresa FROM nucleo.empresas;")
         empresa_ids = [row[0] for row in cur.fetchall()]
 
-        # 2. Insertar 5,000 Proyectos (5 por cada empresa)
-        print("Insertando 5,000 proyectos...")
+        print("Insertando áreas por empresa")
+        areas = [(e_id, "TI Principal") for e_id in empresa_ids]
+        execute_batch(cur, "INSERT INTO nucleo.areas (id_empresa, nombre) VALUES (%s, %s);", areas)
+
+        cur.execute("SELECT id_area, id_empresa FROM nucleo.areas;")
+        areas_reales = {row[1]: row[0] for row in cur.fetchall()}
+
+        print("🏗️ Insertando 5,000 proyectos...")
         proyectos = []
         for e_id in empresa_ids:
+            a_id = areas_reales[e_id]
             for p_idx in range(1, 6):
-                proyectos.append((e_id, f"Proyecto Desarrollo {p_idx} - Empresa {e_id}", 100000.00))
+                proyectos.append((e_id, a_id, f"Proyecto Cloud {p_idx} - E{e_id}"))
         
         execute_batch(cur, """
-            INSERT INTO core.proyectos (empresa_id, nombre, presupuesto_asignado) 
+            INSERT INTO nucleo.proyectos (id_empresa, id_area, nombre) 
             VALUES (%s, %s, %s)
         """, proyectos)
 
-        # 3. Inicializar la Tabla Agregada con costo 0 (Para el UPSERT del Agregador)
-        # Esto es para que el reporte ya exista para el mes actual (Marzo 2026)
-        print("Inicializando 5,000 registros de resumen mensual (costo 0)...")
-        cur.execute("SELECT empresa_id, id_proyecto FROM core.proyectos;")
+        print("Creando usuarios para enviar correos")
+        usuarios = [(f"Usuario {e_id}", f"user{e_id}@test.com", e_id) for e_id in empresa_ids]
+        execute_batch(cur, """
+            INSERT INTO nucleo.usuarios (nombre, correo, id_empresa) 
+            VALUES (%s, %s, %s)
+        """, usuarios)
+
+        print("Inicializando 5,000 resúmenes")
+        cur.execute("SELECT id_empresa, id_area, id_proyecto FROM nucleo.proyectos;")
         proyectos_reales = cur.fetchall()
         
-        resumenes = [(p[0], p[1], 2026, 3, 0) for p in proyectos_reales]
+        resumenes = [(p[0], p[1], p[2], 2026, 3, "USD", 0) for p in proyectos_reales]
         execute_batch(cur, """
-            INSERT INTO analytics.resumen_mensual_costos (empresa_id, proyecto_id, anio, mes, costo_total)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO reportes.resumen_mensual_costos 
+            (id_empresa, id_area, id_proyecto, anio, mes, moneda, costo_total)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, resumenes)
 
         conn.commit()
-        print("Seeding completado exitosamente.")
+        print("Seeding listo")
         
         cur.close()
         conn.close()
 
     except Exception as e:
         print(f"Error durante el Seeding: {e}")
+        if conn: conn.rollback()
 
 if __name__ == "__main__":
     seed_database()

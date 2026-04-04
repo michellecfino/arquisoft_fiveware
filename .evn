@@ -1,0 +1,16 @@
+# Configuración de Base de Datos (AWS RDS)
+DB_HOST=biteco-db-escalabilidad.xxxxxx.us-east-1.rds.amazonaws.com
+DB_NAME=bit_db
+DB_USER=admin_user
+DB_PASS=PasswordSegura123!
+DB_PORT=5432
+
+# Configuración de Mensajería (RabbitMQ)
+RABBIT_HOST=IP_PUBLICA_DE_TU_INSTANCIA_RABBIT
+RABBIT_USER=admin_biteco
+RABBIT_PASS=password123
+
+# Configuración de Correo (Para el Worker)
+# Si usas Mailtrap para el experimento:
+MAILTRAP_USER=tu_usuario_mailtrap
+MAILTRAP_PASS=tu_password_mailtrap
