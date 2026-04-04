@@ -1,3 +1,4 @@
 flask
 pika
+python-dotenv
 psycopg2-binary
