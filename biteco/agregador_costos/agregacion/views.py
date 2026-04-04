@@ -4,17 +4,32 @@ from django.views.decorators.csrf import csrf_exempt
 from .logic.agregacion_logic import agregar_consumo
 from django.db import connection
 
-
 @csrf_exempt
 def agregar_registro(request):
+    print("\n[AGREGADOR] ===== Nueva solicitud =====")
+    print(f"[AGREGADOR] Metodo: {request.method}")
+    print(f"[AGREGADOR] Path: {request.path}")
+
     if request.method != "POST":
+        print("[AGREGADOR] Metodo no permitido")
         return JsonResponse({"error": "Metodo no permitido"}, status=405)
 
     try:
-        payload = json.loads(request.body)
+        raw_body = request.body.decode("utf-8")
+        print(f"[AGREGADOR] Body crudo: {raw_body}")
+
+        payload = json.loads(raw_body)
+        print(f"[AGREGADOR] Payload parseado: {payload}")
+
         resultado = agregar_consumo(payload)
+
+        print(f"[AGREGADOR] Resultado logica: {resultado}")
+        print("[AGREGADOR] ===== Solicitud completada =====\n")
+
         return JsonResponse(resultado, status=201)
+
     except Exception as exc:
+        print(f"[AGREGADOR] ERROR: {exc}")
         return JsonResponse({"error": str(exc)}, status=400)
 
 
