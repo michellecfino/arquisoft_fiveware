@@ -13,7 +13,7 @@ variable "project_prefix" {
 variable "repository" {
   description = "Repositorio git"
   type        = string
-  default     = "AQUI_PONE_SU_REPO"
+  default     = "https://github.com/michellecfino/arquisoft_fiveware.git"
 }
 
 provider "aws" {
@@ -164,12 +164,6 @@ resource "aws_instance" "agregador_costos" {
               git clone ${var.repository}
               cd biteco_local
               pip3 install -r requirements.txt --break-system-packages
-
-              echo "export DB_NAME=biteco" >> /home/ubuntu/.bashrc
-              echo "export DB_USER=admin_biteco" >> /home/ubuntu/.bashrc
-              echo "export DB_PASSWORD=123" >> /home/ubuntu/.bashrc
-              echo "export DB_HOST=${aws_instance.database.private_ip}" >> /home/ubuntu/.bashrc
-              echo "export DB_PORT=5432" >> /home/ubuntu/.bashrc
               EOT
 
   tags = {
@@ -188,18 +182,12 @@ resource "aws_instance" "manejador_reportes" {
   user_data = <<-EOT
               #!/bin/bash
               apt-get update -y
-              apt-get install -y python3-pip git build-essential libpq-dev python3-dev docker.io
+              apt-get install -y python3-pip git build-essential libpq-dev python3-dev
 
               cd /home/ubuntu
               git clone ${var.repository}
               cd biteco_local
               pip3 install -r requirements.txt --break-system-packages
-
-              echo "export DB_NAME=biteco" >> /home/ubuntu/.bashrc
-              echo "export DB_USER=admin_biteco" >> /home/ubuntu/.bashrc
-              echo "export DB_PASSWORD=123" >> /home/ubuntu/.bashrc
-              echo "export DB_HOST=${aws_instance.database.private_ip}" >> /home/ubuntu/.bashrc
-              echo "export DB_PORT=5432" >> /home/ubuntu/.bashrc
               EOT
 
   tags = {
@@ -219,6 +207,9 @@ resource "aws_instance" "kong" {
               #!/bin/bash
               apt-get update -y
               apt-get install -y docker.io git
+
+              systemctl enable docker
+              systemctl start docker
 
               cd /home/ubuntu
               git clone ${var.repository}
@@ -244,6 +235,10 @@ resource "aws_instance" "kong" {
   depends_on = [aws_instance.manejador_reportes]
 }
 
+output "database_public_ip" {
+  value = aws_instance.database.public_ip
+}
+
 output "database_private_ip" {
   value = aws_instance.database.private_ip
 }
@@ -254,6 +249,10 @@ output "agregador_costos_public_ip" {
 
 output "manejador_reportes_public_ip" {
   value = aws_instance.manejador_reportes.public_ip
+}
+
+output "manejador_reportes_private_ip" {
+  value = aws_instance.manejador_reportes.private_ip
 }
 
 output "kong_public_ip" {

@@ -49,11 +49,11 @@ WSGI_APPLICATION = "manejador_reportes.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": os.getenv("DB_NAME", "biteco"),
-        "USER": os.getenv("DB_USER", "admin_biteco"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "123"),
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        "NAME": "biteco",
+        "USER": "admin_biteco",
+        "PASSWORD": "123",
+        "HOST": "<ip-privada-db>",
+        "PORT": "5432",
     }
 }
 
