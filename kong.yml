@@ -8,3 +8,11 @@ services:
       - name: reportes-route
         paths:
           - /reportes
+
+  - name: rabbitmq-mgmt-service
+    url: http://rabbitmq:15672
+    routes:
+      - name: rabbitmq-mgmt-route
+        paths:
+          - /rabbitmq-admin
+EOF
