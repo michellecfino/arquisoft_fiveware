@@ -1,0 +1,17 @@
+_format_version: "2.1"
+
+services:
+  - host: reportes_upstream
+    name: manejador_reportes_service
+    protocol: http
+    routes:
+      - name: manejador_reportes
+        paths:
+          - /api/reportes
+        strip_path: false
+
+upstreams:
+  - name: reportes_upstream
+    targets:
+      - target: <ip-privada-manejador-reportes>:8080
+        weight: 100
