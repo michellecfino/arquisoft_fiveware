@@ -10,11 +10,11 @@ DB_CONFIG = {
     "dbname": "biteco",
     "user": "admin_biteco",
     "password": "123",
-    "host": "localhost",
+    "host": "172.31.20.130",
     "port": 5432,
 }
 
-AGREGADOR_URL = "http://127.0.0.1:8001/api/agregacion/registrar/"
+AGREGADOR_URL = "http://3.89.97.136:8080/api/agregacion/registrar/"
 
 PERIODOS = [
     (2026, 1),
