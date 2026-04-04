@@ -21,18 +21,6 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
-variable "db_instance_type" {
-  description = "EC2 instance type for database host"
-  type        = string
-  default     = "t3.micro"
-}
-
-variable "ami_id" {
-  description = "AMI fija de Ubuntu para evitar DescribeImages"
-  type        = string
-  default     = "ami-0c803b171269e2d72"
-}
-
 # Provider
 provider "aws" {
   region = var.region
@@ -40,8 +28,31 @@ provider "aws" {
 
 # Locals
 locals {
+  project_name = "${var.project_prefix}"
   repository = "https://github.com/michellecfino/arquisoft_fiveware.git"
   branch     = "latencia"
+
+  common_tags = {
+    Project   = local.project_name
+    ManagedBy = "Terraform"
+  }
+
+}
+
+# Data Source. Busca la AMI más reciente de Ubuntu 24.04 usando los filtros especificados.
+data "aws_ami" "ubuntu" {
+    most_recent = true
+    owners      = ["099720109477"]
+
+    filter {
+        name   = "name"
+        values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+    }
+
+    filter {
+        name   = "virtualization-type"
+        values = ["hvm"]
+    }
 }
 
 # =========================================================
@@ -60,9 +71,9 @@ resource "aws_security_group" "traffic_django" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "${var.project_prefix}-traffic-django"
-  }
+  tags = merge(local.common_tags, {
+        Name = "${var.project_prefix}-traffic-django"
+    })
 }
 
 resource "aws_security_group" "traffic_kong" {
@@ -85,9 +96,9 @@ resource "aws_security_group" "traffic_kong" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "${var.project_prefix}-traffic-kong"
-  }
+  tags = merge(local.common_tags, {
+        Name = "${var.project_prefix}-traffic-kong"
+    })
 }
 
 resource "aws_security_group" "traffic_db" {
@@ -102,9 +113,9 @@ resource "aws_security_group" "traffic_db" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
+  tags = merge(local.common_tags, {
     Name = "${var.project_prefix}-traffic-db"
-  }
+  })
 }
 
 resource "aws_security_group" "traffic_ssh" {
@@ -127,9 +138,9 @@ resource "aws_security_group" "traffic_ssh" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
+  tags = merge(local.common_tags, {
     Name = "${var.project_prefix}-traffic-ssh"
-  }
+  })
 }
 
 # =========================================================
@@ -137,7 +148,7 @@ resource "aws_security_group" "traffic_ssh" {
 # =========================================================
 
 resource "aws_instance" "kong" {
-  ami                         = var.ami_id
+  ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.traffic_kong.id, aws_security_group.traffic_ssh.id]
@@ -174,9 +185,10 @@ resource "aws_instance" "kong" {
                 kong:3.6
               EOT
 
-  tags = {
-    Name = "${var.project_prefix}-kong"
-  }
+  tags = merge(local.common_tags, {
+    Name = "${var.project_prefix}-kong",
+    Role = "kong"
+  })
 
   depends_on = [aws_instance.manejador_reportes]
 }
@@ -186,8 +198,8 @@ resource "aws_instance" "kong" {
 # =========================================================
 
 resource "aws_instance" "database" {
-  ami                         = var.ami_id
-  instance_type               = var.db_instance_type
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.traffic_db.id, aws_security_group.traffic_ssh.id]
 
@@ -220,9 +232,10 @@ resource "aws_instance" "database" {
               PGPASSWORD=123 psql -h localhost -U admin_biteco -d biteco -f database/seed_latencia.sql
               EOT
 
-  tags = {
-    Name = "${var.project_prefix}-db"
-  }
+  tags = merge(local.common_tags, {
+    Name = "${var.project_prefix}-db",
+    Role = "database"
+  })
 }
 
 # =========================================================
@@ -230,7 +243,7 @@ resource "aws_instance" "database" {
 # =========================================================
 
 resource "aws_instance" "agregador_costos" {
-  ami                         = var.ami_id
+  ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.traffic_django.id, aws_security_group.traffic_ssh.id]
@@ -255,9 +268,10 @@ resource "aws_instance" "agregador_costos" {
               sudo pip3 install -r requirements.txt --break-system-packages
               EOT
 
-  tags = {
-    Name = "${var.project_prefix}-agregador-costos"
-  }
+  tags = merge(local.common_tags, {
+    Name = "${var.project_prefix}-agregador-costos",
+    Role = "agregador"
+  })
 
   depends_on = [aws_instance.database]
 }
@@ -267,7 +281,7 @@ resource "aws_instance" "agregador_costos" {
 # =========================================================
 
 resource "aws_instance" "manejador_reportes" {
-  ami                         = var.ami_id
+  ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.traffic_django.id, aws_security_group.traffic_ssh.id]
@@ -292,9 +306,10 @@ resource "aws_instance" "manejador_reportes" {
               sudo pip3 install -r requirements.txt --break-system-packages
               EOT
 
-  tags = {
-    Name = "${var.project_prefix}-manejador-reportes"
-  }
+  tags = merge(local.common_tags, {
+    Name = "${var.project_prefix}-manejador-reportes",
+    Role = "reportes"
+  })
 
   depends_on = [aws_instance.database]
 }
