@@ -1,12 +1,13 @@
 import calendar
 import json
 import random
-import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 
 import psycopg2
 import requests
+from psycopg2.extras import execute_values
 
 DB_CONFIG = {
     "dbname": "biteco",
@@ -37,9 +38,11 @@ RESOURCE_PREFIX_POR_PROVEEDOR = {
     "GCP": "google",
 }
 
-REGISTROS_POR_PROYECTO_Y_PERIODO = 3
-PAUSA_ENTRE_LOTES_SEGUNDOS = 3
+REGISTROS_MINIMOS_POR_PROYECTO_MES = 20
+SERVICIOS_MINIMOS_POR_PROYECTO_MES = 7
 TIMEOUT_REQUEST = 5
+MAX_WORKERS_HTTP = 32
+TAMANIO_BATCH_HTTP = 500
 
 
 def obtener_servicios_cloud(cur):
@@ -53,7 +56,7 @@ def obtener_servicios_cloud(cur):
         FROM nube.servicios_cloud sc
         JOIN nube.cuentas_cloud cc
             ON cc.identificador = sc.identificador_cuenta_cloud
-        ORDER BY sc.id_servicio_cloud
+        ORDER BY cc.proveedor, sc.id_servicio_cloud
         """
     )
     return cur.fetchall()
@@ -85,64 +88,6 @@ def obtener_regiones(cur):
     return {nombre: id_region for id_region, nombre in rows}
 
 
-def insertar_crudo(cur, payload):
-    cur.execute(
-        """
-        INSERT INTO nube.registros_consumo
-        (
-            id_proyecto,
-            id_servicio_cloud,
-            id_region,
-            fecha_consumo,
-            grupo_recurso,
-            costo,
-            moneda,
-            id_recurso_crudo
-        )
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-        """,
-        [
-            payload["id_proyecto"],
-            payload["id_servicio_cloud"],
-            payload["id_region"],
-            payload["fecha_consumo"],
-            payload["grupo_recurso"],
-            payload["costo"],
-            payload["moneda"],
-            payload["id_recurso_crudo"],
-        ],
-    )
-
-
-def generar_dias_distribuidos(anio, mes, cantidad):
-    """
-    Genera días distribuidos dentro del mes, evitando que queden todos
-    concentrados al inicio o al final.
-    """
-    ultimo_dia = calendar.monthrange(anio, mes)[1]
-
-    if cantidad <= 1:
-        return [min(15, ultimo_dia)]
-
-    paso = ultimo_dia / (cantidad + 1)
-    dias = []
-
-    for i in range(1, cantidad + 1):
-        base = int(round(i * paso))
-        variacion = random.randint(-2, 2)
-        dia = max(1, min(ultimo_dia, base + variacion))
-        dias.append(dia)
-
-    dias = sorted(set(dias))
-
-    while len(dias) < cantidad:
-        candidato = random.randint(1, ultimo_dia)
-        if candidato not in dias:
-            dias.append(candidato)
-
-    return sorted(dias[:cantidad])
-
-
 def normalizar_nombre(texto):
     return (
         texto.strip()
@@ -153,15 +98,63 @@ def normalizar_nombre(texto):
     )
 
 
-def construir_payload(
-    proyecto,
-    servicio,
-    id_region,
-    anio,
-    mes,
-    dia,
-    consecutivo,
-):
+def ultimo_dia_permitido(anio, mes):
+    if anio == 2026 and mes == 4:
+        return 9
+    return calendar.monthrange(anio, mes)[1]
+
+
+def generar_dias_distribuidos(anio, mes, cantidad):
+    """
+    Devuelve exactamente 'cantidad' días dentro del mes.
+    Puede repetir días cuando cantidad > número de días disponibles.
+    Abril 2026 queda limitado al día 9.
+    """
+    ultimo_dia = ultimo_dia_permitido(anio, mes)
+    dias_disponibles = list(range(1, ultimo_dia + 1))
+
+    if cantidad <= ultimo_dia:
+        return sorted(random.sample(dias_disponibles, cantidad))
+
+    resultado = dias_disponibles.copy()
+    faltantes = cantidad - len(resultado)
+    resultado.extend(random.choices(dias_disponibles, k=faltantes))
+    return sorted(resultado)
+
+
+def agrupar_servicios_por_proveedor(servicios):
+    servicios_por_proveedor = {
+        "AWS": [],
+        "AZURE": [],
+        "GCP": [],
+    }
+    for servicio in servicios:
+        proveedor = servicio[2]
+        servicios_por_proveedor[proveedor].append(servicio)
+    return servicios_por_proveedor
+
+
+def obtener_servicios_distintos_para_proyecto_mes(servicios, cantidad_minima):
+    """
+    Selecciona al menos N servicios distintos globales.
+    Si no existen suficientes, falla explícitamente.
+    """
+    servicios_unicos = {}
+    for s in servicios:
+        servicios_unicos[s[0]] = s
+
+    servicios_lista = list(servicios_unicos.values())
+
+    if len(servicios_lista) < cantidad_minima:
+        raise RuntimeError(
+            f"Se requieren al menos {cantidad_minima} servicios cloud distintos "
+            f"y solo hay {len(servicios_lista)} cargados."
+        )
+
+    return random.sample(servicios_lista, cantidad_minima)
+
+
+def construir_payload(proyecto, servicio, id_region, anio, mes, dia, consecutivo):
     id_proyecto, id_area, id_empresa, nombre_proyecto = proyecto
     id_servicio_cloud, nombre_servicio, proveedor, identificador_cuenta = servicio
 
@@ -169,10 +162,10 @@ def construir_payload(
     nombre_proyecto_norm = normalizar_nombre(nombre_proyecto)
     grupo_recurso = f"rg-{nombre_proyecto_norm}-{anio}{mes:02d}-{dia:02d}"
 
-    # Costo menos caótico, pero con variación suficiente
-    costo_base = random.uniform(2.5, 40.0)
-    ajuste = (mes * 0.35) + (dia * 0.07)
-    costo = round(costo_base + ajuste, 4)
+    costo_base = random.uniform(8.0, 120.0)
+    ajuste_mes = mes * 0.8
+    ajuste_dia = dia * 0.15
+    costo = round(costo_base + ajuste_mes + ajuste_dia, 4)
 
     return {
         "id_empresa": id_empresa,
@@ -195,72 +188,48 @@ def construir_payload(
     }
 
 
-def post_agregador(payload):
-    response = requests.post(
-        AGREGADOR_URL,
-        headers={"Content-Type": "application/json"},
-        data=json.dumps(payload),
-        timeout=TIMEOUT_REQUEST,
-    )
-    response.raise_for_status()
-
-
 def generar_lote_completo(proyectos, servicios, regiones_por_nombre):
-    """
-    Genera un lote garantizando:
-    - todos los proyectos
-    - todos los periodos
-    - varios días dentro de cada mes
-    - servicios y regiones coherentes con el proveedor
-    """
     if not proyectos:
         raise RuntimeError("No hay proyectos disponibles en nucleo.proyectos")
 
     if not servicios:
         raise RuntimeError("No hay servicios cloud disponibles")
 
-    lote = []
-    consecutivo = 1
-
-    servicios_por_proveedor = {
-        "AWS": [s for s in servicios if s[2] == "AWS"],
-        "AZURE": [s for s in servicios if s[2] == "AZURE"],
-        "GCP": [s for s in servicios if s[2] == "GCP"],
-    }
+    servicios_por_proveedor = agrupar_servicios_por_proveedor(servicios)
 
     for proveedor, regiones in REGIONES_POR_PROVEEDOR.items():
         if not servicios_por_proveedor[proveedor]:
             raise RuntimeError(f"No hay servicios cargados para proveedor {proveedor}")
-
         for region in regiones:
             if region not in regiones_por_nombre:
-                raise RuntimeError(
-                    f"No existe la región '{region}' en nube.regiones"
-                )
+                raise RuntimeError(f"No existe la región '{region}' en nube.regiones")
 
-    proveedores = list(REGIONES_POR_PROVEEDOR.keys())
+    lote = []
+    consecutivo = 1
 
     for proyecto_idx, proyecto in enumerate(proyectos):
         for periodo_idx, (anio, mes) in enumerate(PERIODOS):
+            servicios_base = obtener_servicios_distintos_para_proyecto_mes(
+                servicios,
+                SERVICIOS_MINIMOS_POR_PROYECTO_MES,
+            )
+
             dias = generar_dias_distribuidos(
                 anio,
                 mes,
-                REGISTROS_POR_PROYECTO_Y_PERIODO,
+                REGISTROS_MINIMOS_POR_PROYECTO_MES,
             )
 
-            # Alterna proveedor de forma controlada para no dejar todo al azar
-            proveedor_base = proveedores[(proyecto_idx + periodo_idx) % len(proveedores)]
+            for i in range(REGISTROS_MINIMOS_POR_PROYECTO_MES):
+                servicio = servicios_base[i % len(servicios_base)]
+                proveedor = servicio[2]
 
-            for i, dia in enumerate(dias):
-                proveedor = proveedores[
-                    (proveedores.index(proveedor_base) + i) % len(proveedores)
-                ]
-
-                servicio = random.choice(servicios_por_proveedor[proveedor])
-                region_nombre = REGIONES_POR_PROVEEDOR[proveedor][
-                    (proyecto_idx + periodo_idx + i) % len(REGIONES_POR_PROVEEDOR[proveedor])
+                regiones_validas = REGIONES_POR_PROVEEDOR[proveedor]
+                region_nombre = regiones_validas[
+                    (proyecto_idx + periodo_idx + i) % len(regiones_validas)
                 ]
                 id_region = regiones_por_nombre[region_nombre]
+                dia = dias[i]
 
                 payload = construir_payload(
                     proyecto=proyecto,
@@ -278,6 +247,78 @@ def generar_lote_completo(proyectos, servicios, regiones_por_nombre):
     return lote
 
 
+def insertar_crudo_masivo(cur, lote):
+    valores = [
+        (
+            p["id_proyecto"],
+            p["id_servicio_cloud"],
+            p["id_region"],
+            p["fecha_consumo"],
+            p["grupo_recurso"],
+            p["costo"],
+            p["moneda"],
+            p["id_recurso_crudo"],
+        )
+        for p in lote
+    ]
+
+    execute_values(
+        cur,
+        """
+        INSERT INTO nube.registros_consumo
+        (
+            id_proyecto,
+            id_servicio_cloud,
+            id_region,
+            fecha_consumo,
+            grupo_recurso,
+            costo,
+            moneda,
+            id_recurso_crudo
+        )
+        VALUES %s
+        """,
+        valores,
+        page_size=2000,
+    )
+
+
+def post_agregador(payload, session):
+    response = session.post(
+        AGREGADOR_URL,
+        headers={"Content-Type": "application/json"},
+        data=json.dumps(payload),
+        timeout=TIMEOUT_REQUEST,
+    )
+    response.raise_for_status()
+
+
+def enviar_lote_agregador(lote):
+    enviados = 0
+    fallidos = 0
+
+    with requests.Session() as session:
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS_HTTP) as executor:
+            futures = [
+                executor.submit(post_agregador, payload, session)
+                for payload in lote
+            ]
+
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                    enviados += 1
+                except Exception:
+                    fallidos += 1
+
+    return enviados, fallidos
+
+
+def chunks(lista, tam):
+    for i in range(0, len(lista), tam):
+        yield lista[i:i + tam]
+
+
 def main():
     conn = psycopg2.connect(**DB_CONFIG)
     conn.autocommit = False
@@ -291,43 +332,42 @@ def main():
 
         print(f"Proyectos encontrados: {len(proyectos)}")
         print(f"Servicios encontrados: {len(servicios)}")
-        print("Iniciando generación continua de lotes...")
 
-        while True:
-            lote = generar_lote_completo(
-                proyectos=proyectos,
-                servicios=servicios,
-                regiones_por_nombre=regiones_por_nombre,
+        lote = generar_lote_completo(
+            proyectos=proyectos,
+            servicios=servicios,
+            regiones_por_nombre=regiones_por_nombre,
+        )
+
+        print(f"Total de registros a insertar: {len(lote)}")
+        print(
+            f"Configuración: {REGISTROS_MINIMOS_POR_PROYECTO_MES} registros por proyecto/mes, "
+            f"{SERVICIOS_MINIMOS_POR_PROYECTO_MES} servicios mínimos por proyecto/mes"
+        )
+
+        insertar_crudo_masivo(cur, lote)
+        conn.commit()
+        print("Inserción en BD completada.")
+
+        enviados_total = 0
+        fallidos_total = 0
+
+        for idx, batch in enumerate(chunks(lote, TAMANIO_BATCH_HTTP), start=1):
+            enviados, fallidos = enviar_lote_agregador(batch)
+            enviados_total += enviados
+            fallidos_total += fallidos
+            print(
+                f"Batch HTTP {idx}: enviados={enviados}, fallidos={fallidos}, tamaño={len(batch)}"
             )
 
-            insertados = 0
-            enviados = 0
+        print(
+            f"Proceso completado. BD insertados={len(lote)}, "
+            f"agregador enviados={enviados_total}, fallidos={fallidos_total}"
+        )
 
-            try:
-                for payload in lote:
-                    insertar_crudo(cur, payload)
-                    insertados += 1
-
-                    try:
-                        post_agregador(payload)
-                        enviados += 1
-                    except requests.RequestException as e:
-                        print(
-                            f"[WARN] Falló POST al agregador para proyecto "
-                            f"{payload['id_proyecto']} fecha {payload['fecha_consumo']}: {e}"
-                        )
-
-                conn.commit()
-                print(
-                    f"Lote completado. Insertados BD: {insertados}, "
-                    f"enviados agregador: {enviados}, total lote: {len(lote)}"
-                )
-
-            except Exception:
-                conn.rollback()
-                raise
-
-            time.sleep(PAUSA_ENTRE_LOTES_SEGUNDOS)
+    except Exception:
+        conn.rollback()
+        raise
 
     finally:
         conn.close()
