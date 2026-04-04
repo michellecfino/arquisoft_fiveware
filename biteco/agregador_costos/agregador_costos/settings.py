@@ -52,7 +52,7 @@ DATABASES = {
         "NAME": "biteco",
         "USER": "admin_biteco",
         "PASSWORD": "123",
-        "HOST": "<ip-privada-db>",
+        "HOST": "172.31.20.130",
         "PORT": "5432",
     }
 }
