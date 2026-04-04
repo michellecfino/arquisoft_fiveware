@@ -82,8 +82,8 @@ resource "aws_security_group" "traffic_kong" {
 
   ingress {
     description = "Kong proxy"
-    from_port   = 80
-    to_port     = 80
+    from_port   = 8000
+    to_port     = 8000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
