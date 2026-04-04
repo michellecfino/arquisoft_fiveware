@@ -13,5 +13,5 @@ services:
 upstreams:
   - name: reportes_upstream
     targets:
-      - target: <ip-privada-manejador-reportes>:8080
+      - target: 172.31.18.211:8080
         weight: 100
