@@ -7,6 +7,7 @@ services:
     routes:
       - name: manejador_reportes
         paths:
+          - /reportes
           - /api/reportes
         strip_path: false
 
