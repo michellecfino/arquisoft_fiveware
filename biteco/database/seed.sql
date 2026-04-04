@@ -94,7 +94,17 @@ ON c.proveedor = 'GCP'
 ON CONFLICT (identificador_cuenta_cloud, nombre) DO NOTHING;
 
 INSERT INTO reportes.resumen_mensual_costos
-(id_empresa, id_area, id_proyecto, anio, mes, moneda, costo_total, cantidad_registros, ultima_actualizacion)
+(
+    id_empresa,
+    id_area,
+    id_proyecto,
+    anio,
+    mes,
+    moneda,
+    costo_total,
+    cantidad_registros,
+    ultima_actualizacion
+)
 SELECT
     p.id_empresa,
     p.id_area,
@@ -102,8 +112,8 @@ SELECT
     periodo.anio,
     periodo.mes,
     'USD'::nucleo.moneda_enum,
-    ROUND((RANDOM() * 300 + 20)::numeric, 4),
-    0,
+    0, -- costo en 0
+    0, -- cantidad en 0
     NOW()
 FROM nucleo.proyectos p
 CROSS JOIN (
