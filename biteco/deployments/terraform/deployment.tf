@@ -227,7 +227,7 @@ resource "aws_instance" "database" {
               git checkout ${local.branch}
               git pull origin ${local.branch}
 
-              cd biteco_local
+              cd biteco
               PGPASSWORD=123 psql -h localhost -U admin_biteco -d biteco -f database/esquema_base.sql
               PGPASSWORD=123 psql -h localhost -U admin_biteco -d biteco -f database/seed_latencia.sql
               EOT
