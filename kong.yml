@@ -1,0 +1,10 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: manejador-service
+    url: http://manejador_reportes:5000
+    routes:
+      - name: reportes-route
+        paths:
+          - /reportes
