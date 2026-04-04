@@ -1,5 +1,5 @@
 INSERT INTO nube.regiones (nombre)
-VALUES ('us east 2'), ('us east'), ('global')
+VALUES ('us east 2'), ('us east'), ('global'), ('us-east-2'), ('us-east-1'), ('us-west-2'), ('us-central1'), ('us-east1')
 ON CONFLICT (nombre) DO NOTHING;
 
 INSERT INTO nucleo.empresas (nombre, tamano, sector)

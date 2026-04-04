@@ -229,7 +229,7 @@ resource "aws_instance" "database" {
 
               cd biteco
               PGPASSWORD=123 psql -h localhost -U admin_biteco -d biteco -f database/esquema_base.sql
-              PGPASSWORD=123 psql -h localhost -U admin_biteco -d biteco -f database/seed_latencia.sql
+              PGPASSWORD=123 psql -h localhost -U admin_biteco -d biteco -f database/seed.sql
               EOT
 
   tags = merge(local.common_tags, {
