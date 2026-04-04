@@ -16,7 +16,7 @@ DB_CONFIG = {
     "port": 5432,
 }
 
-AGREGADOR_URL = "http://3.89.97.136:8080/api/agregacion/registrar/"
+AGREGADOR_URL = "http://3.80.83.238:8080/api/agregacion/registrar/"
 
 PERIODOS = [
     (2026, 1),
