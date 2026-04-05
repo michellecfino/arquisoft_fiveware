@@ -3,6 +3,14 @@ resource "aws_security_group" "rabbitmq_sg" {
   description = "Permitir trafico de mensajeria"
 
   ingress {
+    description = "Puerto para envio de mensajes desde la App"
+    from_port   = 5672
+    to_port     = 5672
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] 
+  }
+
+  ingress {
     from_port   = 15672
     to_port     = 15672
     protocol    = "tcp"
