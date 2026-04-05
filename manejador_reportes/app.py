@@ -5,7 +5,7 @@ from database import get_db_connection
 
 app = Flask(__name__)
 
-RABBIT_HOST = 'IP_PUBLICA_DE_TU_RABBITMQ'
+RABBIT_HOST = 'rabbitmq'
 RABBIT_USER = 'admin_biteco'
 RABBIT_PASS = 'password123'
 

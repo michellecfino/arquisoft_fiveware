@@ -2,10 +2,11 @@ services:
   # La Base de Datos
   db:
     image: postgres:15
+    restart: always
     environment:
-      POSTGRES_DB: bit_db
+      POSTGRES_DB: postgres
       POSTGRES_USER: admin_user
-      POSTGRES_PASSWORD: PasswordSegura123!
+      POSTGRES_PASSWORD: michi1234
     ports:
       - "5432:5432"
     volumes:
@@ -41,7 +42,7 @@ services:
   kong:
     image: kong:latest
     volumes:
-      - ./kong:/usr/local/kong/declarative
+      - /home/ubuntu/arquisoft_fiveware/kong.yml:/usr/local/kong/declarative/kong.yml
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: "/usr/local/kong/declarative/kong.yml"

@@ -3,11 +3,12 @@ _transform: true
 
 services:
   - name: manejador-service
-    url: http://manejador_reportes:5000
+    url: http://manejador_reportes:8001
     routes:
       - name: reportes-route
         paths:
-          - /reportes
+          - /reporte-mensual
+        strip_path: false
 
   - name: rabbitmq-mgmt-service
     url: http://rabbitmq:15672
@@ -15,4 +16,3 @@ services:
       - name: rabbitmq-mgmt-route
         paths:
           - /rabbitmq-admin
-EOF

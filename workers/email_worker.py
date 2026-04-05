@@ -4,9 +4,9 @@ import time
 import sys
 
 # Configuración (Usa la misma IP que pusiste en el app.py)
-RABBIT_HOST = 'IP_PUBLICA_DE_TU_RABBITMQ'
-RABBIT_USER = 'admin_biteco'
-RABBIT_PASS = 'password123'
+RABBIT_HOST = 'rabbitmq'
+RABBIT_USER = 'guest'
+RABBIT_PASS = 'guest'
 
 def enviar_correo_simulado(data):
     """Aquí es donde conectarías con Amazon SES o Mailtrap"""
