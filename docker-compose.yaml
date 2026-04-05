@@ -1,6 +1,6 @@
 version: '3.8'
+
 services:
-  
   manejador_reportes:
     build: ./manejador_reportes
     ports:
@@ -8,11 +8,13 @@ services:
     env_file:
       - .env
     restart: always
+
   email_worker:
     build: ./workers
     env_file:
       - .env
     restart: always
+
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -22,3 +24,18 @@ services:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
     restart: always
+
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: user_choco
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: choco_reportes
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
