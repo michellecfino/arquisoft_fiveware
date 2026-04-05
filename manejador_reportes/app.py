@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 DB_HOST = os.getenv('DB_HOST')
 DB_NAME = os.getenv('DB_NAME', 'postgres')
-RABBIT_HOST = 'arquisoft_fiveware-rabbitmq-1'
+RABBIT_HOST = os.getenv('RABBIT_HOST','rabbitmq')
 RABBIT_USER = os.getenv('RABBIT_USER', 'guest')
 RABBIT_PASS = os.getenv('RABBIT_PASS', 'guest')
 
@@ -66,13 +66,7 @@ def obtener_reporte():
     else:
         return jsonify({
             "status": "fail",
-            "message": "Rabbitmq no respondió")},500
-        print(f"⚠️ RabbitMQ no está disponible, pero recibí: {datos_notificacion}")
-        
-        return jsonify({
-            "status": "success_local", 
-            "message": "API funcionando, pero RabbitMQ está apagado."
-        }), 200
-
+            "message": "Rabbitmq no respondió"}), 500
+       
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8001)

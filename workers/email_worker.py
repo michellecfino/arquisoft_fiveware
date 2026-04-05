@@ -4,8 +4,10 @@ import time
 import sys
 import os
 
+print("15 segundos pls")
+time.sleep(15)
 
-RABBIT_HOST = os.getenv('RABBIT_HOST')
+RABBIT_HOST = os.getenv('RABBIT_HOST','rabbitmq')
 RABBIT_USER = os.getenv('RABBIT_USER', 'admin_biteco')
 RABBIT_PASS = os.getenv('RABBIT_PASS', 'password123')
 def enviar_correo_simulado(data):
