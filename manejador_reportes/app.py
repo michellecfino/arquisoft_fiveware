@@ -1,5 +1,6 @@
 import pika
 import json
+import time
 from flask import Flask, request, jsonify
 from database import get_db_connection
 import os
@@ -12,29 +13,36 @@ RABBIT_HOST = os.getenv('RABBIT_HOST','rabbitmq')
 RABBIT_USER = os.getenv('RABBIT_USER', 'guest')
 RABBIT_PASS = os.getenv('RABBIT_PASS', 'guest')
 
+def conectar_con_reintento():
+    while True:
+        try:
+            print(" [*] Intentando conectar a RabbitMQ...")
+            credentials = pika.PlainCredentials(RABBIT_USER, RABBIT_PASS)
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(host=RABBIT_HOST, credentials=credentials)
+            )
+            return connection
+        except Exception:
+            print(" [!] RabbitMQ no listo. Reintentando en 10 segundos...")
+            time.sleep(10)   
+
 def enviar_a_cola(mensaje):
-    """Función para publicar el evento en RabbitMQ"""
     try:
-        credentials = pika.PlainCredentials(RABBIT_USER, RABBIT_PASS)
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=RABBIT_HOST, credentials=credentials)
-        )
+        # Usamos la lógica de reintento también aquí para que no falle el request
+        connection = conectar_con_reintento()
         channel = connection.channel()
-        
         channel.queue_declare(queue='cola_notificaciones', durable=True)
         
         channel.basic_publish(
             exchange='',
             routing_key='cola_notificaciones',
             body=json.dumps(mensaje),
-            properties=pika.BasicProperties(
-                delivery_mode=2,
-            )
+            properties=pika.BasicProperties(delivery_mode=2)
         )
         connection.close()
         return True
     except Exception as e:
-        print(f"Error conectando a RabbitMQ: {e}",flush=true)
+        print(f"Error enviando a cola: {e}")
         return False
 
 @app.route('/reporte-mensual', methods=['POST'])
@@ -67,6 +75,9 @@ def obtener_reporte():
         return jsonify({
             "status": "fail",
             "message": "Rabbitmq no respondió"}), 500
+        
+        
+     
        
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8001)
