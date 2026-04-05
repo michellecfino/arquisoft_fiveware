@@ -39,16 +39,17 @@ def obtener_reporte():
     data = request.get_json()
     empresa_id = data.get('empresa_id')
     proyecto_id = data.get('proyecto_id')
-    email_usuario = data.get('email', 'usuario@ejemplo.com') # Simulando el destino
-
     anio = 2026
     mes = 3
+    
+    email_usuario = data.get('email', 'usuario@ejemplo.com') # Simulando el destino
+
     datos_notificacion = {
         "empresa_id": empresa_id,
         "proyecto_id": proyecto_id,
+        "email": email_usuario,
         "anio": anio,
         "mes": mes,
-        "email": email_usuario,
         "mensaje": f"Tu reporte del proyecto {proyecto_id} está listo."
     }
 
