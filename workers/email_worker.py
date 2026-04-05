@@ -2,12 +2,12 @@ import pika
 import json
 import time
 import sys
+import os
 
-# Configuración (Usa la misma IP que pusiste en el app.py)
-RABBIT_HOST = 'rabbitmq'
-RABBIT_USER = 'guest'
-RABBIT_PASS = 'guest'
 
+RABBIT_HOST = os.getenv('RABBIT_HOST')
+RABBIT_USER = os.getenv('RABBIT_USER', 'admin_biteco')
+RABBIT_PASS = os.getenv('RABBIT_PASS', 'password123')
 def enviar_correo_simulado(data):
     """Aquí es donde conectarías con Amazon SES o Mailtrap"""
     email = data.get('email')

@@ -2,12 +2,15 @@ import pika
 import json
 from flask import Flask, request, jsonify
 from database import get_db_connection
+import os
 
 app = Flask(__name__)
 
-RABBIT_HOST = 'rabbitmq'
-RABBIT_USER = 'admin_biteco'
-RABBIT_PASS = 'password123'
+DB_HOST = os.getenv('DB_HOST')
+DB_NAME = os.getenv('DB_NAME', 'postgres')
+RABBIT_HOST = os.getenv('RABBIT_HOST')
+RABBIT_USER = os.getenv('RABBIT_USER', 'admin_biteco')
+RABBIT_PASS = os.getenv('RABBIT_PASS', 'password123')
 
 def enviar_a_cola(mensaje):
     """Función para publicar el evento en RabbitMQ"""
