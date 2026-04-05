@@ -2,17 +2,41 @@ resource "aws_security_group" "apps_sg" {
   name        = "biteco_apps_sg"
   description = "Permitir trafico para Flask y Kong"
 
-  ingress { from_port = 8000; to_port = 8001; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
-  ingress { from_port = 22; to_port = 22; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
-  ingress { from_port = 80; to_port = 80; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
+  # Reglas de entrada (Ingress)
+  ingress {
+    from_port   = 8000
+    to_port     = 8001
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  egress { from_port = 0; to_port = 0; protocol = "-1"; cidr_blocks = ["0.0.0.0/0"] }
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Regla de salida (Egress)
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 # --- GATEWAY DEDICADO (KONG) ---
 resource "aws_instance" "kong_gateway" {
-  ami           = "ami-080e1f13689e07408"
-  instance_type = "t3.micro"
+  ami                    = "ami-080e1f13689e07408"
+  instance_type          = "t3.micro"
   vpc_security_group_ids = [aws_security_group.apps_sg.id]
 
   user_data = <<-EOF
@@ -32,12 +56,13 @@ resource "aws_instance" "kong_gateway" {
 
 # --- PLANTILLA DE LAS APPS ---
 resource "aws_launch_template" "flask_tpl" {
-  name_id_prefix = "flask-app-tpl-"
+  # Cambiado a name_prefix que es el estándar
+  name_prefix   = "flask-app-tpl-"
   image_id      = "ami-080e1f13689e07408"
   instance_type = "t3.micro"
   vpc_security_group_ids = [aws_security_group.apps_sg.id]
 
- user_data = base64encode(templatefile("${path.module}/../scripts/install_app.sh", {
+  user_data = base64encode(templatefile("${path.module}/../scripts/install_app.sh", {
     rds_endpoint = aws_db_instance.postgres_db.endpoint,
     rabbitmq_ip  = aws_instance.rabbitmq_server.public_ip
   }))
