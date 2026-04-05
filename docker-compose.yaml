@@ -8,12 +8,16 @@ services:
     env_file:
       - .env
     restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
 
   email_worker:
     build: ./workers
     env_file:
       - .env
     restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
 
   rabbitmq:
     image: rabbitmq:3-management
