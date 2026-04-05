@@ -37,7 +37,7 @@ resource "aws_launch_template" "flask_tpl" {
   instance_type = "t3.micro"
   vpc_security_group_ids = [aws_security_group.apps_sg.id]
 
-  user_data = base64encode(templatefile("../scripts/install_app.sh", {
+ user_data = base64encode(templatefile("${path.module}/../scripts/install_app.sh", {
     rds_endpoint = aws_db_instance.postgres_db.endpoint,
     rabbitmq_ip  = aws_instance.rabbitmq_server.public_ip
   }))
