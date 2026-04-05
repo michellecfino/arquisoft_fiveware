@@ -27,7 +27,7 @@ resource "aws_security_group" "rds_sg" {
 resource "aws_db_instance" "postgres_db" {
   identifier           = "biteco-db-escalabilidad"
   engine               = "postgres"
-  engine_version       = "15.4" # Versión estable y moderna
+  engine_version       = "16.1"
   instance_class       = "db.t3.micro"
   allocated_storage    = 20
   db_name              = "bit_db"
