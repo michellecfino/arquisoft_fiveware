@@ -8,9 +8,9 @@ app = Flask(__name__)
 
 DB_HOST = os.getenv('DB_HOST')
 DB_NAME = os.getenv('DB_NAME', 'postgres')
-RABBIT_HOST = os.getenv('RABBIT_HOST')
-RABBIT_USER = os.getenv('RABBIT_USER', 'admin_biteco')
-RABBIT_PASS = os.getenv('RABBIT_PASS', 'password123')
+RABBIT_HOST = 'arquisoft_fiveware-rabbitmq-1'
+RABBIT_USER = os.getenv('RABBIT_USER', 'guest')
+RABBIT_PASS = os.getenv('RABBIT_PASS', 'guest')
 
 def enviar_a_cola(mensaje):
     """Función para publicar el evento en RabbitMQ"""
@@ -34,7 +34,7 @@ def enviar_a_cola(mensaje):
         connection.close()
         return True
     except Exception as e:
-        print(f"Error conectando a RabbitMQ: {e}")
+        print(f"Error conectando a RabbitMQ: {e}",flush=true)
         return False
 
 @app.route('/reporte-mensual', methods=['POST'])
@@ -64,8 +64,9 @@ def obtener_reporte():
             "message": "Reporte procesado. La notificación se enviará en breve."
         }), 200
     else:
-        # 💡 CAMBIO TEMPORAL PARA MICHELLE: 
-        # Si RabbitMQ falla, igual mostramos éxito en la terminal para debuguear
+        return jsonify({
+            "status": "fail",
+            "message": "Rabbitmq no respondió")},500
         print(f"⚠️ RabbitMQ no está disponible, pero recibí: {datos_notificacion}")
         
         return jsonify({

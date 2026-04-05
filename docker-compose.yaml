@@ -5,14 +5,20 @@ services:
     build: ./manejador_reportes
     ports:
       - "8001:8001"
-    environment:
-    
-      DB_HOST: ${DATABASE_URL} 
-      RABBIT_HOST: ${RABBITMQ_URL}
+    env_file:
+      - .env
     restart: always
-
   email_worker:
     build: ./workers
+    env_file:
+      - .env
+    restart: always
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     environment:
-      RABBIT_HOST: ${RABBITMQ_URL}
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
     restart: always
