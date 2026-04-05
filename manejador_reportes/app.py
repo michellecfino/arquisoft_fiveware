@@ -34,15 +34,20 @@ def enviar_a_cola(mensaje):
         print(f"Error conectando a RabbitMQ: {e}")
         return False
 
-@app.route('/reporte-mensual', methods=['GET'])
+@app.route('/reporte-mensual', methods=['POST'])
 def obtener_reporte():
-    empresa_id = request.args.get('empresa_id')
-    proyecto_id = request.args.get('proyecto_id')
-    email_usuario = request.args.get('email', 'usuario@ejemplo.com') # Simulando el destino
+    data = request.get_json()
+    empresa_id = data.get('empresa_id')
+    proyecto_id = data.get('proyecto_id')
+    email_usuario = data.get('email', 'usuario@ejemplo.com') # Simulando el destino
 
+    anio = 2026
+    mes = 3
     datos_notificacion = {
         "empresa_id": empresa_id,
         "proyecto_id": proyecto_id,
+        "anio": anio,
+        "mes": mes,
         "email": email_usuario,
         "mensaje": f"Tu reporte del proyecto {proyecto_id} está listo."
     }
