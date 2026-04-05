@@ -9,8 +9,8 @@ systemctl start rabbitmq-server
 
 rabbitmq-plugins enable rabbitmq_management
 
-rabbitmqctl add_user admin_biteco password123
-rabbitmqctl set_user_tags admin_biteco administrator
-rabbitmqctl set_permissions -p / admin_biteco ".*" ".*" ".*"
+rabbitmqctl add_user guest guest
+rabbitmqctl set_user_tags guest administrator
+rabbitmqctl set_permissions -p / guest ".*" ".*" ".*"
 
 systemctl restart rabbitmq-server

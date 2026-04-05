@@ -10,7 +10,7 @@ cd arquisoft_fiveware
 
 cat <<EOT >> .env
 DATABASE_URL=postgresql://admin_user:michi1234@${rds_endpoint}/bit_db
-RABBITMQ_URL=amqp://admin_biteco:password123@${rabbitmq_ip}:5672/
+RABBITMQ_URL=amqp://guest:guest@${rabbitmq_ip}:5672/
 MAIL_SERVER=sandbox.smtp.mailtrap.io
 MAIL_PORT=2525
 MAIL_USERNAME=TU_USUARIO_MAILTRAP

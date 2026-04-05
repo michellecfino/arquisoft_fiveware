@@ -6,8 +6,8 @@ import os
 
 # 1. Configuración
 RABBIT_HOST = os.getenv('RABBIT_HOST','rabbitmq')
-RABBIT_USER = os.getenv('RABBIT_USER', 'admin_biteco')
-RABBIT_PASS = os.getenv('RABBIT_PASS', 'password123')
+RABBIT_USER = os.getenv('RABBIT_USER', 'guest')
+RABBIT_PASS = os.getenv('RABBIT_PASS', 'guest')
 
 def enviar_correo_simulado(data):
     email = data.get('email')
