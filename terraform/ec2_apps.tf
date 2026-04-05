@@ -75,9 +75,9 @@ resource "aws_launch_template" "flask_tpl" {
 
 # --- GRUPO ELÁSTICO (ASG) ---
 resource "aws_autoscaling_group" "flask_asg" {
-  desired_capacity   = 2
+  desired_capacity   = 4
   max_size           = 10
-  min_size           = 1
+  min_size           = 2
   availability_zones = ["us-east-1a", "us-east-1b"]
 
   launch_template {
