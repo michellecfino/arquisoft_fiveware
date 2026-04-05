@@ -12,13 +12,13 @@ RABBIT_PASS = os.getenv('RABBIT_PASS', 'guest')
 def enviar_correo_simulado(data):
     email = data.get('email')
     proyecto = data.get('proyecto_id')
-    print(f" [-->] Enviando reporte del proyecto {proyecto} a {email}...")
+    print(f" [-->] Enviando reporte del proyecto {proyecto} a {email}...", flush=True)
     time.sleep(1) 
-    print(f" [OK] Correo enviado exitosamente a {email}")
+    print(f" [OK] Correo enviado exitosamente a {email}", flush=True)
     return True
 
 def callback(ch, method, properties, body):
-    print(f" [x] Mensaje recibido: {body.decode()}")
+    print(f" [x] Mensaje recibido: {body.decode()}", flush=True)
     try:
         data = json.loads(body)
         if enviar_correo_simulado(data):
@@ -30,7 +30,7 @@ def iniciar_worker():
     # EL SECRETO: Un bucle que no deja morir al worker
     while True:
         try:
-            print(" [*] Intentando conectar a RabbitMQ...")
+            print(" [*] Intentando conectar a RabbitMQ...", flush=True)
             credentials = pika.PlainCredentials(RABBIT_USER, RABBIT_PASS)
             connection = pika.BlockingConnection(
                 pika.ConnectionParameters(host=RABBIT_HOST, credentials=credentials)
