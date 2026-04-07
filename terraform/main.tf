@@ -91,13 +91,28 @@ resource "aws_security_group" "general_sg" {
 }
 
 # ========================
-# KEY PAIR
+# TLS PRIVATE KEY (genera llaves automáticamente)
+# ========================
+resource "tls_private_key" "biteco_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+# ========================
+# AWS KEY PAIR
 # ========================
 resource "aws_key_pair" "biteco_key" {
   key_name   = "biteco-key"
-  public_key = file("${path.module}/biteco_key.pub")
+  public_key = tls_private_key.biteco_key.public_key_openssh
 }
 
+# ========================
+# Guardar la llave privada localmente para conectarte (opcional)
+# ========================
+resource "local_file" "biteco_private_key" {
+  content  = tls_private_key.biteco_key.private_key_pem
+  filename = "${path.module}/biteco_key.pem"
+}
 # ========================
 # RDS
 # ========================
