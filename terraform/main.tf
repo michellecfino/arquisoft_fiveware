@@ -7,8 +7,7 @@ provider "aws" {
 # ========================
 data "aws_ami" "ubuntu" {
   most_recent = true
-
-  owners = ["099720109477"] # Canonical
+  owners      = ["099720109477"] # Canonical
 
   filter {
     name   = "name"
@@ -92,25 +91,25 @@ resource "aws_security_group" "general_sg" {
 }
 
 # ========================
-# RDS
+# KEY PAIR
 # ========================
 resource "aws_key_pair" "biteco_key" {
   key_name   = "biteco-key"
-  public_key = file("~/.ssh/id_rsa.pub")  # tu llave pública local
+  public_key = file("${path.module}/biteco_key.pub") 
 }
 
 # ========================
 # RDS
 # ========================
 resource "aws_db_instance" "postgres" {
-  identifier         = "biteco-db"
-  engine             = "postgres"
-  engine_version     = "16"
-  instance_class     = "db.t3.micro"
-  allocated_storage  = 20
-  db_name            = "bit_db"
-  username           = "admin_user"
-  password           = "michi1234"
+  identifier          = "biteco-db"
+  engine              = "postgres"
+  engine_version      = "16"
+  instance_class      = "db.t3.micro"
+  allocated_storage   = 20
+  db_name             = "bit_db"
+  username            = "admin_user"
+  password            = "michi1234"
   publicly_accessible = true
   skip_final_snapshot = true
 
@@ -202,8 +201,7 @@ resource "aws_autoscaling_group" "asg" {
     version = "$Latest"
   }
 
-  target_group_arns = [aws_lb_target_group.app_tg.arn]
-
+  target_group_arns   = [aws_lb_target_group.app_tg.arn]
   vpc_zone_identifier = data.aws_subnets.default.ids
 }
 
