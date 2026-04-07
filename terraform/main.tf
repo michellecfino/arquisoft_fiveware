@@ -94,6 +94,14 @@ resource "aws_security_group" "general_sg" {
 # ========================
 # RDS
 # ========================
+resource "aws_key_pair" "biteco_key" {
+  key_name   = "biteco-key"
+  public_key = file("~/.ssh/id_rsa.pub")  # tu llave pública local
+}
+
+# ========================
+# RDS
+# ========================
 resource "aws_db_instance" "postgres" {
   identifier         = "biteco-db"
   engine             = "postgres"
@@ -115,7 +123,7 @@ resource "aws_db_instance" "postgres" {
 resource "aws_instance" "rabbitmq" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
-  key_name = "biteco-key"
+  key_name      = aws_key_pair.biteco_key.key_name
 
   vpc_security_group_ids = [aws_security_group.general_sg.id]
 
@@ -133,7 +141,7 @@ resource "aws_launch_template" "app_template" {
   name_prefix   = "biteco-app-"
   image_id      = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
-  key_name = "biteco-key"
+  key_name      = aws_key_pair.biteco_key.key_name
 
   vpc_security_group_ids = [aws_security_group.general_sg.id]
 
@@ -205,7 +213,7 @@ resource "aws_autoscaling_group" "asg" {
 resource "aws_instance" "kong" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
-  key_name = "biteco-key"
+  key_name      = aws_key_pair.biteco_key.key_name
 
   vpc_security_group_ids = [aws_security_group.general_sg.id]
 
