@@ -10,8 +10,13 @@ git clone -b escalabilidad https://github.com/michellecfino/arquisoft_fiveware.g
 cd arquisoft_fiveware
 
 cat <<EOT > .env
-DATABASE_URL=postgresql://admin_user:michi1234@${rds_endpoint}/bit_db
-RABBITMQ_URL=amqp://guest:guest@${rabbitmq_ip}:5672/
+DB_HOST=${rds_endpoint}
+DB_NAME=bit_db
+DB_USER=admin_user
+DB_PASS=michi1234
+RABBITMQ_HOST=${rabbitmq_ip}
+RABBIT_USER=guest
+RABBIT_PASS=guest
 EOT
 
 docker-compose up -d --build

@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 DB_HOST = os.getenv('DB_HOST', 'db')
 DB_NAME = os.getenv('DB_NAME', 'choco_reportes')
-RABBIT_HOST = os.getenv('RABBIT_HOST', 'rabbitmq')
+RABBIT_HOST = os.getenv('RABBITMQ_HOST', 'localhost')
 RABBIT_USER = os.getenv('RABBIT_USER', 'guest')
 RABBIT_PASS = os.getenv('RABBIT_PASS', 'guest')
 
