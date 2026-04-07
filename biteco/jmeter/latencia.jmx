@@ -10,8 +10,8 @@
     <hashTree>
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Usuarios">
         <intProp name="ThreadGroup.num_threads">5000</intProp>
-        <intProp name="ThreadGroup.ramp_time">10</intProp>
-        <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
+        <intProp name="ThreadGroup.ramp_time">60</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Controlador Loop">
           <stringProp name="LoopController.loops">1</stringProp>
@@ -22,7 +22,7 @@
         <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Reportes">
           <stringProp name="delimiter">,</stringProp>
           <stringProp name="fileEncoding"></stringProp>
-          <stringProp name="filename">C:/Users/Admin/Desktop/Arquisoft/arquisoft_fiveware/biteco/jmeter/data/consultas_reportes.csv</stringProp>
+          <stringProp name="filename">C:/Users/Admin/Desktop/Semestre 2026-10/Arquisoft/arquisoft_fiveware/biteco/jmeter/data/consultas_reportes.csv</stringProp>
           <boolProp name="ignoreFirstLine">true</boolProp>
           <boolProp name="quotedData">false</boolProp>
           <boolProp name="recycle">true</boolProp>
@@ -32,9 +32,13 @@
         </CSVDataSet>
         <hashTree/>
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET Reporte">
+<<<<<<< HEAD
           <intProp name="HTTPSampler.connect_timeout">2000</intProp>
           <intProp name="HTTPSampler.response_timeout">5000</intProp>
           <stringProp name="HTTPSampler.domain">54.147.0.162</stringProp>
+=======
+          <stringProp name="HTTPSampler.domain">3.88.167.92</stringProp>
+>>>>>>> 676f1d989468206848af4b4b6f805c0e89dc846e
           <stringProp name="HTTPSampler.port">8000</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.path">/api/reportes/${id_proyecto}/${anio}/${mes}/</stringProp>
@@ -49,7 +53,11 @@
         </HTTPSamplerProxy>
         <hashTree>
           <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="ASR menor a 100 ms">
+<<<<<<< HEAD
             <stringProp name="DurationAssertion.duration">99</stringProp>
+=======
+            <stringProp name="DurationAssertion.duration">500</stringProp>
+>>>>>>> 676f1d989468206848af4b4b6f805c0e89dc846e
           </DurationAssertion>
           <hashTree/>
         </hashTree>
