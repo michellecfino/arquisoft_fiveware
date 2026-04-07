@@ -95,7 +95,7 @@ resource "aws_security_group" "general_sg" {
 # ========================
 resource "aws_key_pair" "biteco_key" {
   key_name   = "biteco-key"
-  public_key = file("${path.module}/biteco_key.pub") 
+  public_key = file("${path.module}/biteco_key.pub")
 }
 
 # ========================
