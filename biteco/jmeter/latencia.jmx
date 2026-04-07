@@ -9,9 +9,9 @@
     </TestPlan>
     <hashTree>
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Usuarios">
-        <intProp name="ThreadGroup.num_threads">10</intProp>
-        <intProp name="ThreadGroup.ramp_time">60</intProp>
-        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <intProp name="ThreadGroup.num_threads">5000</intProp>
+        <intProp name="ThreadGroup.ramp_time">10</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Controlador Loop">
           <stringProp name="LoopController.loops">1</stringProp>
@@ -32,6 +32,8 @@
         </CSVDataSet>
         <hashTree/>
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET Reporte">
+          <intProp name="HTTPSampler.connect_timeout">2000</intProp>
+          <intProp name="HTTPSampler.response_timeout">5000</intProp>
           <stringProp name="HTTPSampler.domain">54.147.0.162</stringProp>
           <stringProp name="HTTPSampler.port">8000</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
@@ -43,9 +45,10 @@
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="Variables definidas por el Usuario">
             <collectionProp name="Arguments.arguments"/>
           </elementProp>
+          <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="ASR menor a 100 ms" enabled="true">
+          <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="ASR menor a 100 ms">
             <stringProp name="DurationAssertion.duration">99</stringProp>
           </DurationAssertion>
           <hashTree/>
