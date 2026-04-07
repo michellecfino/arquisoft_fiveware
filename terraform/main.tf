@@ -115,6 +115,7 @@ resource "aws_db_instance" "postgres" {
 resource "aws_instance" "rabbitmq" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
+  key_name = "biteco-key"
 
   vpc_security_group_ids = [aws_security_group.general_sg.id]
 
@@ -132,6 +133,7 @@ resource "aws_launch_template" "app_template" {
   name_prefix   = "biteco-app-"
   image_id      = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
+  key_name = "biteco-key"
 
   vpc_security_group_ids = [aws_security_group.general_sg.id]
 
@@ -203,6 +205,7 @@ resource "aws_autoscaling_group" "asg" {
 resource "aws_instance" "kong" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
+  key_name = "biteco-key"
 
   vpc_security_group_ids = [aws_security_group.general_sg.id]
 
