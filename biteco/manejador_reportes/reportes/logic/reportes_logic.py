@@ -6,7 +6,10 @@ from django.db import connection
 
 
 def publicar_en_broker(payload):
-    url = f"http://{os.getenv('RABBITMQ_HOST')}:{os.getenv('RABBITMQ_API_PORT')}/api/exchanges/%2F/{os.getenv('RABBITMQ_EXCHANGE')}/publish"
+    url = (
+        f"http://{os.getenv('RABBITMQ_HOST')}:{os.getenv('RABBITMQ_API_PORT')}"
+        f"/api/exchanges/%2F/{os.getenv('RABBITMQ_EXCHANGE')}/publish"
+    )
 
     body = {
         "properties": {},
@@ -84,8 +87,7 @@ def obtener_reporte(id_proyecto, anio, mes):
     }
 
 
-def generar_reporte_y_encolar(id_empresa, id_area, id_proyecto, id_usuario, correo_destino, anio, mes):
-    reporte = obtener_reporte(id_proyecto, anio, mes)
+def registrar_reporte_y_notificacion(id_empresa, id_area, id_proyecto, id_usuario, correo_destino, anio, mes, reporte):
     request_id = str(uuid.uuid4())
     instancia_origen = os.getenv("REPORTES_INSTANCE_NAME", "reportes-instance")
 
@@ -102,9 +104,17 @@ def generar_reporte_y_encolar(id_empresa, id_area, id_proyecto, id_usuario, corr
             RETURNING id_reporte
             """,
             [
-                id_empresa, id_area, id_proyecto, id_usuario,
-                anio, mes, reporte["moneda"], reporte["costo_total_mes"],
-                reporte["cantidad_registros_consolidados"], request_id, instancia_origen
+                id_empresa,
+                id_area,
+                id_proyecto,
+                id_usuario,
+                anio,
+                mes,
+                reporte["moneda"],
+                reporte["costo_total_mes"],
+                reporte["cantidad_registros_consolidados"],
+                request_id,
+                instancia_origen,
             ],
         )
         id_reporte = cursor.fetchone()[0]
@@ -143,6 +153,27 @@ def generar_reporte_y_encolar(id_empresa, id_area, id_proyecto, id_usuario, corr
         "id_reporte": id_reporte,
         "id_notificacion": id_notificacion,
         "request_id": request_id,
-        "estado": "Encolada",
+        "estado_notificacion": "Encolada",
+    }
+
+
+def obtener_reporte_y_notificar(id_empresa, id_area, id_proyecto, id_usuario, correo_destino, anio, mes):
+    reporte = obtener_reporte(id_proyecto, anio, mes)
+    meta = registrar_reporte_y_notificacion(
+        id_empresa=id_empresa,
+        id_area=id_area,
+        id_proyecto=id_proyecto,
+        id_usuario=id_usuario,
+        correo_destino=correo_destino,
+        anio=anio,
+        mes=mes,
+        reporte=reporte,
+    )
+
+    return {
+        "id_reporte": meta["id_reporte"],
+        "id_notificacion": meta["id_notificacion"],
+        "request_id": meta["request_id"],
+        "estado_notificacion": meta["estado_notificacion"],
         "reporte": reporte,
     }
