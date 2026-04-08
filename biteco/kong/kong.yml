@@ -1,0 +1,25 @@
+_format_version: "3.0"
+
+services:
+  - name: manejador-reportes
+    host: upstream-reportes
+    port: 8000
+    protocol: http
+    routes:
+      - name: reportes-route
+        paths:
+          - /reportes
+        strip_path: false
+
+upstreams:
+  - name: upstream-reportes
+    algorithm: least-connections
+    targets:
+      - target: 172.31.21.8:8080
+        weight: 100
+      - target: 172.31.29.97:8080
+        weight: 100
+      - target: 172.31.30.155:8080
+        weight: 100
+      - target: 172.31.23.17:8080
+        weight: 100
