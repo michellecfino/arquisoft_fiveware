@@ -96,8 +96,8 @@ resource "aws_security_group" "traffic_django" {
 
   ingress {
     description = "HTTP access for Django services"
-    from_port   = 8000
-    to_port     = 8000
+    from_port   = 8080
+    to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }

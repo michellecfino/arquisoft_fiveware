@@ -8,6 +8,7 @@ services:
     routes:
       - name: reportes-route
         paths:
+          - /api/reportes
           - /reportes
         strip_path: false
 
