@@ -1,0 +1,53 @@
+{
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "users": [
+    {
+      "name": "biteco_user",
+      "password": "isis2503",
+      "tags": "administrator"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "biteco_user",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "reportes_exchange",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "cola_notificaciones_email",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "reportes_exchange",
+      "vhost": "/",
+      "destination": "cola_notificaciones_email",
+      "destination_type": "queue",
+      "routing_key": "reporte.generado",
+      "arguments": {}
+    }
+  ]
+}

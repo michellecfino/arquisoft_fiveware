@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumen de reporte</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; background: #f7f7f7; }
+        .card { background: #fff; padding: 20px; border-radius: 8px; max-width: 900px; margin: auto; }
+        h1, h2 { margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #efefef; }
+        .meta { margin-bottom: 18px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Reporte mensual de gastos</h1>
+        <div class="meta">
+            <p><strong>Proyecto:</strong> {{ reporte.id_proyecto }}</p>
+            <p><strong>Periodo:</strong> {{ reporte.periodo.anio }}-{{ reporte.periodo.mes }}</p>
+            <p><strong>Moneda:</strong> {{ reporte.moneda }}</p>
+            <p><strong>Costo total:</strong> {{ reporte.costo_total_mes }}</p>
+            <p><strong>Registros consolidados:</strong> {{ reporte.cantidad_registros_consolidados }}</p>
+        </div>
+
+        <h2>Desglose por servicio</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Servicio</th>
+                    <th>Cantidad registros</th>
+                    <th>Costo total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in reporte.desglose_por_servicio %}
+                <tr>
+                    <td>{{ item.tipo_servicio }}</td>
+                    <td>{{ item.cantidad_registros }}</td>
+                    <td>{{ item.costo_total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
