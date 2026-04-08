@@ -5,6 +5,9 @@ import requests
 from django.db import connection
 
 
+CORREO_DESTINO_FIJO = "usuario_test@biteco.com"
+
+
 def publicar_en_broker(payload):
     url = (
         f"http://{os.getenv('RABBITMQ_HOST')}:{os.getenv('RABBITMQ_API_PORT')}"
@@ -25,6 +28,42 @@ def publicar_en_broker(payload):
         timeout=10,
     )
     response.raise_for_status()
+
+
+def obtener_contexto_solicitud(id_proyecto):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                p.id_empresa,
+                p.id_area,
+                (
+                    SELECT u.id_usuario
+                    FROM nucleo.usuarios u
+                    WHERE u.id_empresa = p.id_empresa
+                      AND u.activo = TRUE
+                    ORDER BY u.id_usuario
+                    LIMIT 1
+                ) AS id_usuario
+            FROM nucleo.proyectos p
+            WHERE p.id_proyecto = %s
+            """,
+            [id_proyecto],
+        )
+        row = cursor.fetchone()
+
+    if not row:
+        raise ValueError("No se pudo resolver empresa, area o usuario para la solicitud")
+
+    if row[2] is None:
+        raise ValueError("No existe un usuario activo asociado a la empresa del proyecto")
+
+    return {
+        "id_empresa": row[0],
+        "id_area": row[1],
+        "id_usuario": row[2],
+        "correo_destino": CORREO_DESTINO_FIJO,
+    }
 
 
 def obtener_reporte(id_proyecto, anio, mes):
@@ -87,7 +126,13 @@ def obtener_reporte(id_proyecto, anio, mes):
     }
 
 
-def registrar_reporte_y_notificacion(id_empresa, id_area, id_proyecto, id_usuario, correo_destino, anio, mes, reporte):
+def registrar_reporte_y_notificacion(id_proyecto, anio, mes, reporte):
+    contexto = obtener_contexto_solicitud(id_proyecto)
+    id_empresa = contexto["id_empresa"]
+    id_area = contexto["id_area"]
+    id_usuario = contexto["id_usuario"]
+    correo_destino = contexto["correo_destino"]
+
     request_id = str(uuid.uuid4())
     instancia_origen = os.getenv("REPORTES_INSTANCE_NAME", "reportes-instance")
 
@@ -157,14 +202,10 @@ def registrar_reporte_y_notificacion(id_empresa, id_area, id_proyecto, id_usuari
     }
 
 
-def obtener_reporte_y_notificar(id_empresa, id_area, id_proyecto, id_usuario, correo_destino, anio, mes):
+def obtener_reporte_y_notificar(id_proyecto, anio, mes):
     reporte = obtener_reporte(id_proyecto, anio, mes)
     meta = registrar_reporte_y_notificacion(
-        id_empresa=id_empresa,
-        id_area=id_area,
         id_proyecto=id_proyecto,
-        id_usuario=id_usuario,
-        correo_destino=correo_destino,
         anio=anio,
         mes=mes,
         reporte=reporte,
