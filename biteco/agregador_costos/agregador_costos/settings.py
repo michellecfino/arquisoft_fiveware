@@ -50,9 +50,9 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
         "NAME": "biteco",
-        "USER": "admin_biteco",
-        "PASSWORD": "123",
-        "HOST": "172.31.20.130",
+        "USER": "postgres",
+        "PASSWORD": "postgres123",
+        "HOST": "rds-postgresql-latencia.coemlypc6xbn.us-east-1.rds.amazonaws.com",
         "PORT": "5432",
     }
 }

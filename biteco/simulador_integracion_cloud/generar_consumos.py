@@ -12,13 +12,13 @@ from psycopg2.extras import execute_values
 
 DB_CONFIG = {
     "dbname": "biteco",
-    "user": "admin_biteco",
-    "password": "123",
-    "host": "172.31.20.130",
+    "user": "postgres",
+    "password": "postgres123",
+    "host": "rds-postgresql-latencia.coemlypc6xbn.us-east-1.rds.amazonaws.com",
     "port": 5432,
 }
 
-AGREGADOR_URL = "http://54.210.207.162:8080/api/agregacion/registrar/"
+AGREGADOR_URL = "http://18.215.145.124:8080/api/agregacion/registrar/"
 
 PERIODOS = [
     (2026, 1),
