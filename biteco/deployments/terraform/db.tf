@@ -1,3 +1,32 @@
+variable "db_name" {
+  description = "Nombre de la base de datos"
+  type        = string
+  default     = "biteco_latencia"
+}
+
+variable "db_username" {
+  description = "Usuario maestro de PostgreSQL"
+  type        = string
+  default     = "postgres"
+}
+
+variable "db_password" {
+  description = "Password maestro de PostgreSQL"
+  type        = string
+  sensitive   = true
+}
+
+data "aws_vpc" "default" {
+  default = true
+}
+
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
 # =========================================================
 # Security Group - RDS PostgreSQL
 # =========================================================
