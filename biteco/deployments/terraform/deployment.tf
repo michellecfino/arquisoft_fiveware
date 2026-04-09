@@ -193,50 +193,7 @@ resource "aws_instance" "kong" {
   depends_on = [aws_instance.manejador_reportes]
 }
 
-# =========================================================
-# EC2 - Database
-# =========================================================
 
-resource "aws_instance" "database" {
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = var.instance_type
-  associate_public_ip_address = true
-  vpc_security_group_ids      = [aws_security_group.traffic_db.id, aws_security_group.traffic_ssh.id]
-
-  user_data = <<-EOT
-              #!/bin/bash
-
-              sudo apt-get update -y
-              sudo apt-get install -y postgresql postgresql-contrib git
-
-              sudo -u postgres psql -c "CREATE USER admin_biteco WITH PASSWORD '123';" || true
-              sudo -u postgres createdb -O admin_biteco biteco || true
-
-              echo "host all all 0.0.0.0/0 trust" | sudo tee -a /etc/postgresql/16/main/pg_hba.conf
-              echo "listen_addresses='*'" | sudo tee -a /etc/postgresql/16/main/postgresql.conf
-              echo "max_connections=2000" | sudo tee -a /etc/postgresql/16/main/postgresql.conf
-              sudo systemctl restart postgresql
-
-              cd /home/ubuntu
-              if [ ! -d arquisoft_fiveware ]; then
-                git clone ${local.repository}
-              fi
-
-              cd arquisoft_fiveware
-              git fetch origin ${local.branch}
-              git checkout ${local.branch}
-              git pull origin ${local.branch}
-
-              cd biteco
-              PGPASSWORD=123 psql -h localhost -U admin_biteco -d biteco -f database/esquema_base.sql
-              PGPASSWORD=123 psql -h localhost -U admin_biteco -d biteco -f database/seed.sql
-              EOT
-
-  tags = merge(local.common_tags, {
-    Name = "${var.project_prefix}-db",
-    Role = "database"
-  })
-}
 
 # =========================================================
 # EC2 - Agregador Costos
@@ -273,7 +230,7 @@ resource "aws_instance" "agregador_costos" {
     Role = "agregador"
   })
 
-  depends_on = [aws_instance.database]
+  depends_on = [aws_db_instance.database]
 }
 
 # =========================================================
@@ -311,7 +268,7 @@ resource "aws_instance" "manejador_reportes" {
     Role = "reportes"
   })
 
-  depends_on = [aws_instance.database]
+  depends_on = [aws_db_instance.database]
 }
 
 # =========================================================
@@ -336,14 +293,4 @@ output "manejador_reportes_public_ip" {
 output "manejador_reportes_private_ip" {
   description = "Private IP address for manejador reportes"
   value       = aws_instance.manejador_reportes.private_ip
-}
-
-output "database_private_ip" {
-  description = "Private IP address for PostgreSQL database instance"
-  value       = aws_instance.database.private_ip
-}
-
-output "database_public_ip" {
-  description = "Public IP address for PostgreSQL database instance"
-  value       = aws_instance.database.public_ip
 }
