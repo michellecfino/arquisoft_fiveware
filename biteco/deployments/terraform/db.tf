@@ -1,11 +1,11 @@
-resource "aws_db_instance" "rds_postgresql" {
+resource "aws_db_instance" "database" {
   identifier             = "rds-postgresql-latencia"
   engine                 = "postgres"
   instance_class         = "db.t3.micro"
   allocated_storage      = 20
   username               = "postgres"
   password               = "postgres123"
-  db_name                = "biteco_latencia"
+  db_name                = "biteco"
   skip_final_snapshot    = true
   publicly_accessible    = true
   vpc_security_group_ids = [aws_security_group.traffic_db.id]
@@ -16,7 +16,7 @@ resource "aws_db_instance" "rds_postgresql" {
   })
 }
 
-output "rds_postgresql_endpoint" {
+output "database_endpoint" {
   description = "RDS PostgreSQL endpoint"
-  value       = aws_db_instance.rds_postgresql.address
+  value       = aws_db_instance.database.address
 }
