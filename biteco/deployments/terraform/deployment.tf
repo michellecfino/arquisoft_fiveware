@@ -235,7 +235,8 @@ resource "aws_instance" "audit" {
   associate_public_ip_address = false
 
   vpc_security_group_ids = [
-    aws_security_group.audit_sg.id
+    aws_security_group.audit_sg.id,
+    aws_security_group.ssh_sg.id
   ]
 
   tags = {
