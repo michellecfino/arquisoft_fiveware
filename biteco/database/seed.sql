@@ -1,13 +1,5 @@
 INSERT INTO nube.regiones (nombre)
-VALUES
-('us east 2'),
-('us east'),
-('global'),
-('us-east-2'),
-('us-east-1'),
-('us-west-2'),
-('us-central1'),
-('us-east1')
+VALUES ('us east 2'), ('us east'), ('global'), ('us-east-2'), ('us-east-1'), ('us-west-2'), ('us-central1'), ('us-east1')
 ON CONFLICT (nombre) DO NOTHING;
 
 INSERT INTO nucleo.empresas (nombre, tamano, sector)
@@ -26,16 +18,6 @@ SELECT a.id_empresa, a.id_area, 'proyecto-' || a.id_area || '-' || gs
 FROM nucleo.areas a
 CROSS JOIN generate_series(1, 15) gs
 ON CONFLICT (id_empresa, nombre) DO NOTHING;
-
-INSERT INTO nucleo.usuarios (id_empresa, nombre, correo, rol)
-SELECT
-    e.id_empresa,
-    'usuario-' || e.id_empresa || '-' || gs,
-    'usuario-' || e.id_empresa || '-' || gs || '@test.local',
-    'ADMIN'
-FROM nucleo.empresas e
-CROSS JOIN generate_series(1, 5) gs
-ON CONFLICT (correo) DO NOTHING;
 
 INSERT INTO nube.cuentas_cloud (identificador, proveedor)
 SELECT 'cuenta-aws-' || gs, 'AWS'::nube.proveedor_enum
@@ -111,55 +93,29 @@ JOIN (
 ON c.proveedor = 'GCP'
 ON CONFLICT (identificador_cuenta_cloud, nombre) DO NOTHING;
 
-INSERT INTO nube.proyectos_cuentas_cloud (id_proyecto, identificador_cuenta_cloud)
-SELECT
-    p.id_proyecto,
-    cc.identificador
-FROM nucleo.proyectos p
-JOIN LATERAL (
-    SELECT identificador
-    FROM nube.cuentas_cloud
-    ORDER BY random()
-    LIMIT 1
-) cc ON TRUE
-ON CONFLICT (id_proyecto, identificador_cuenta_cloud) DO NOTHING;
-
-INSERT INTO nube.registros_consumo
+INSERT INTO reportes.resumen_mensual_costos
 (
+    id_empresa,
+    id_area,
     id_proyecto,
-    id_servicio_cloud,
-    id_region,
-    fecha_consumo,
-    grupo_recurso,
-    costo,
+    anio,
+    mes,
     moneda,
-    id_recurso_crudo
+    costo_total,
+    cantidad_registros,
+    ultima_actualizacion
 )
 SELECT
+    p.id_empresa,
+    p.id_area,
     p.id_proyecto,
-    sc.id_servicio_cloud,
-    r.id_region,
-    make_date(periodo.anio, periodo.mes, LEAST(dia.n, 28)),
-    'rg-' || p.id_proyecto || '-' || periodo.mes,
-    round((10 + random() * 490)::numeric, 2),
+    periodo.anio,
+    periodo.mes,
     'USD'::nucleo.moneda_enum,
-    'recurso-' || p.id_proyecto || '-' || periodo.anio || '-' || periodo.mes || '-' || dia.n
+    0, -- costo en 0
+    0, -- cantidad en 0
+    NOW()
 FROM nucleo.proyectos p
-JOIN nube.proyectos_cuentas_cloud pcc
-  ON pcc.id_proyecto = p.id_proyecto
-JOIN LATERAL (
-    SELECT sc.id_servicio_cloud
-    FROM nube.servicios_cloud sc
-    WHERE sc.identificador_cuenta_cloud = pcc.identificador_cuenta_cloud
-    ORDER BY random()
-    LIMIT 1
-) sc ON TRUE
-JOIN LATERAL (
-    SELECT id_region
-    FROM nube.regiones
-    ORDER BY random()
-    LIMIT 1
-) r ON TRUE
 CROSS JOIN (
     VALUES
     (2026, 1),
@@ -167,4 +123,4 @@ CROSS JOIN (
     (2026, 3),
     (2026, 4)
 ) AS periodo(anio, mes)
-CROSS JOIN generate_series(1, 20) dia(n);
+ON CONFLICT (id_empresa, id_area, id_proyecto, anio, mes) DO NOTHING;
