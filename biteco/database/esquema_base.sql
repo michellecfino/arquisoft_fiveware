@@ -1,0 +1,160 @@
+DROP SCHEMA IF EXISTS reportes CASCADE;
+DROP SCHEMA IF EXISTS nube CASCADE;
+DROP SCHEMA IF EXISTS nucleo CASCADE;
+
+CREATE SCHEMA IF NOT EXISTS nucleo;
+CREATE SCHEMA IF NOT EXISTS nube;
+CREATE SCHEMA IF NOT EXISTS reportes;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'estado_notificacion_enum'
+        AND n.nspname = 'nucleo'
+    ) THEN
+        CREATE TYPE nucleo.estado_notificacion_enum AS ENUM ('Pendiente', 'Encolada', 'Enviada', 'Fallida');
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'moneda_enum'
+        AND n.nspname = 'nucleo'
+    ) THEN
+        CREATE TYPE nucleo.moneda_enum AS ENUM ('USD', 'COP', 'EUR');
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'proveedor_enum'
+        AND n.nspname = 'nube'
+    ) THEN
+        CREATE TYPE nube.proveedor_enum AS ENUM ('AWS', 'AZURE', 'GCP');
+    END IF;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS nucleo.empresas (
+    id_empresa SERIAL PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL UNIQUE,
+    tamano VARCHAR(40) NOT NULL,
+    sector VARCHAR(100) NOT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS nucleo.areas (
+    id_area SERIAL PRIMARY KEY,
+    id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa) ON DELETE CASCADE,
+    nombre VARCHAR(120) NOT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (id_empresa, nombre)
+);
+
+CREATE TABLE IF NOT EXISTS nucleo.proyectos (
+    id_proyecto SERIAL PRIMARY KEY,
+    id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa) ON DELETE CASCADE,
+    id_area INT NOT NULL REFERENCES nucleo.areas(id_area) ON DELETE CASCADE,
+    nombre VARCHAR(150) NOT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (id_empresa, nombre)
+);
+
+CREATE TABLE IF NOT EXISTS nucleo.usuarios (
+    id_usuario SERIAL PRIMARY KEY,
+    id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa) ON DELETE CASCADE,
+    nombre VARCHAR(120) NOT NULL,
+    correo VARCHAR(150) NOT NULL UNIQUE,
+    rol VARCHAR(40) NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS nube.cuentas_cloud (
+    identificador VARCHAR(100) PRIMARY KEY,
+    proveedor nube.proveedor_enum NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS nube.proyectos_cuentas_cloud (
+    id_proyecto INT NOT NULL REFERENCES nucleo.proyectos(id_proyecto) ON DELETE CASCADE,
+    identificador_cuenta_cloud VARCHAR(100) NOT NULL REFERENCES nube.cuentas_cloud(identificador) ON DELETE CASCADE,
+    PRIMARY KEY (id_proyecto, identificador_cuenta_cloud)
+);
+
+CREATE TABLE IF NOT EXISTS nube.servicios_cloud (
+    id_servicio_cloud BIGSERIAL PRIMARY KEY,
+    identificador_cuenta_cloud VARCHAR(100) NOT NULL REFERENCES nube.cuentas_cloud(identificador) ON DELETE CASCADE,
+    nombre VARCHAR(100) NOT NULL,
+    UNIQUE (identificador_cuenta_cloud, nombre)
+);
+
+CREATE TABLE IF NOT EXISTS nube.regiones (
+    id_region SERIAL PRIMARY KEY,
+    nombre VARCHAR(80) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS nube.registros_consumo (
+    id_registro_consumo BIGSERIAL PRIMARY KEY,
+    id_proyecto INT NOT NULL REFERENCES nucleo.proyectos(id_proyecto) ON DELETE CASCADE,
+    id_servicio_cloud BIGINT NOT NULL REFERENCES nube.servicios_cloud(id_servicio_cloud) ON DELETE CASCADE,
+    id_region INT REFERENCES nube.regiones(id_region) ON DELETE SET NULL,
+    fecha_consumo DATE NOT NULL,
+    grupo_recurso VARCHAR(150),
+    costo NUMERIC(14,4) NOT NULL,
+    moneda nucleo.moneda_enum NOT NULL,
+    id_recurso_crudo TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reportes.reportes_generados (
+    id_reporte BIGSERIAL PRIMARY KEY,
+    id_empresa INT NOT NULL REFERENCES nucleo.empresas(id_empresa) ON DELETE CASCADE,
+    id_area INT NOT NULL REFERENCES nucleo.areas(id_area) ON DELETE CASCADE,
+    id_proyecto INT NOT NULL REFERENCES nucleo.proyectos(id_proyecto) ON DELETE CASCADE,
+    id_usuario INT NOT NULL REFERENCES nucleo.usuarios(id_usuario) ON DELETE CASCADE,
+    anio INT NOT NULL CHECK (anio >= 2000),
+    mes INT NOT NULL CHECK (mes BETWEEN 1 AND 12),
+    moneda nucleo.moneda_enum NOT NULL,
+    total_costo NUMERIC(14,4) NOT NULL DEFAULT 0,
+    cantidad_registros INT NOT NULL DEFAULT 0,
+    request_id VARCHAR(100) NOT NULL UNIQUE,
+    instancia_origen VARCHAR(100) NOT NULL,
+    fecha_generacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS nucleo.notificaciones (
+    id_notificacion BIGSERIAL PRIMARY KEY,
+    id_usuario INT NOT NULL REFERENCES nucleo.usuarios(id_usuario) ON DELETE CASCADE,
+    id_reporte BIGINT NOT NULL REFERENCES reportes.reportes_generados(id_reporte) ON DELETE CASCADE,
+    correo_destino VARCHAR(150) NOT NULL,
+    fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_envio TIMESTAMPTZ,
+    estado nucleo.estado_notificacion_enum NOT NULL DEFAULT 'Pendiente',
+    broker_message_id VARCHAR(200),
+    smtp_message_id VARCHAR(200),
+    intentos INT NOT NULL DEFAULT 0,
+    mensaje TEXT NOT NULL,
+    url_acceso TEXT,
+    error_detalle TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_registros_consumo_proyecto_fecha
+ON nube.registros_consumo(id_proyecto, fecha_consumo);
+
+CREATE INDEX IF NOT EXISTS idx_reportes_generados_proyecto_periodo
+ON reportes.reportes_generados(id_proyecto, anio, mes);
+
+CREATE INDEX IF NOT EXISTS idx_notificaciones_reporte
+ON nucleo.notificaciones(id_reporte);
