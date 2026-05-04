@@ -11,17 +11,7 @@ services:
           - /api/reportes
           - /reportes
         strip_path: false
-        
-  - name: manejador-logs
-    host: 3.90.190.188
-    port: 8001
-    protocol: http
-    routes:
-      - name: logs-route
-        paths:
-          - /api/audit
-        strip_path: true
-
+      
 upstreams:
   - name: upstream-reportes
     algorithm: least-connections
