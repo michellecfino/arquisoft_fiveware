@@ -1,7 +1,7 @@
 import os
-from django.core.wsgi import get_wsgi_application
+from django.core.asgi import get_asgi_application
 
-# Cambiamos "manejador_reportes.settings" por "manejador_logs.settings"
+# Ajuste crucial para la independencia del microservicio
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "manejador_logs.settings")
 
-application = get_wsgi_application()
+application = get_asgi_application()
