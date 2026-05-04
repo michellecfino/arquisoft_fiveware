@@ -4,9 +4,9 @@ from .logic.reportes_logic import obtener_reporte_y_notificar, obtener_empresa_d
 from .logic.log_client import registrar_accion
 
 # IPs bloqueadas (Revoke Access Handler en memoria)
-_ips_bloqueadas = set()
+MAX_INTENTOS = 3
+_usuarios_bloqueados = set()
 _intentos_fallidos = {}
-MAX_INTENTOS = 5001
 
 
 def get_user(request):
@@ -26,14 +26,11 @@ def get_client_ip(request):
 
 
 def verificar_autorizacion(user, id_proyecto, ip):
-    """
-    Tactica Limit Exposure + Revoke Access:
-    Verifica que el usuario solo acceda a proyectos de SU empresa.
-    Si falla 3 veces, bloquea la IP.
-    """
-    # ── Tactica: Revoke Access — IP ya bloqueada ──
-    if ip in _ips_bloqueadas:
-        return False, "IP bloqueada por accesos no autorizados"
+    user_id = user.get("user_id", "anon")
+
+    # ── Revoke Access — usuario ya bloqueado ──
+    if user_id in _usuarios_bloqueados:
+        return False, f"Usuario {user_id} bloqueado por accesos no autorizados"
 
     empresa_del_proyecto = obtener_empresa_de_proyecto(id_proyecto)
     empresa_del_usuario = user.get("empresa_id")
@@ -42,27 +39,25 @@ def verificar_autorizacion(user, id_proyecto, ip):
         return False, "Token sin empresa asignada"
 
     if str(empresa_del_proyecto) != str(empresa_del_usuario):
-        # Registrar intento fallido
-        _intentos_fallidos[ip] = _intentos_fallidos.get(ip, 0) + 1
+        _intentos_fallidos[user_id] = _intentos_fallidos.get(user_id, 0) + 1
 
-        if _intentos_fallidos[ip] >= MAX_INTENTOS:
-            _ips_bloqueadas.add(ip)
+        if _intentos_fallidos[user_id] >= MAX_INTENTOS:
+            _usuarios_bloqueados.add(user_id)
             registrar_accion(
-                user["user_id"],
-                "IP_BLOQUEADA",
-                f"IP {ip} bloqueada tras {MAX_INTENTOS} intentos no autorizados"
+                user_id,
+                "USUARIO_BLOQUEADO",
+                f"Usuario {user_id} bloqueado tras {MAX_INTENTOS} intentos no autorizados"
             )
-            return False, f"IP bloqueada tras {MAX_INTENTOS} intentos no autorizados"
+            return False, f"Usuario {user_id} bloqueado tras {MAX_INTENTOS} intentos no autorizados"
 
         return False, (
             f"Acceso no autorizado: empresa del proyecto ({empresa_del_proyecto}) "
             f"no coincide con empresa del usuario ({empresa_del_usuario}). "
-            f"Intento {_intentos_fallidos[ip]}/{MAX_INTENTOS}"
+            f"Intento {_intentos_fallidos[user_id]}/{MAX_INTENTOS}"
         )
 
-    # Acceso autorizado — limpiar intentos fallidos si los había
-    if ip in _intentos_fallidos:
-        del _intentos_fallidos[ip]
+    if user_id in _intentos_fallidos:
+        del _intentos_fallidos[user_id]
 
     return True, "ok"
 
