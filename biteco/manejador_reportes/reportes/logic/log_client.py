@@ -3,14 +3,15 @@ import os
 
 AUDIT_URL = os.getenv("AUDIT_URL", "http://manejador_logs:8001/audit/log/")
 
-def registrar_accion(user_id, action):
+def registrar_accion(user_id, action, metadata=""):
+    mensaje_completo = f"[{action}] - {metadata}"
+    
     payload = {
-        "user_id": user_id,
-        "service": "reportes",
-        "action": action
+        "level": "INFO" if "ERROR" not in action else "ERROR",
+        "message": f"User: {user_id} | {mensaje_completo}"
     }
 
     try:
-        requests.post(AUDIT_URL, json=payload)
+        requests.post(AUDIT_URL, json=payload, timeout=3)
     except Exception as e:
-        print("Error enviando log:", e)
+        print(f"Error enviando log: {e}")
