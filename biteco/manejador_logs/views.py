@@ -21,3 +21,18 @@ def registrar_log(request):
 
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+def listar_logs(request):
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+        
+    user_role = request.headers.get("X-User-Role") 
+
+    if user_role != "ADMIN":
+        return JsonResponse({
+            "error": "Access Denied", 
+            "message": "Solo usuarios con rol ADMIN pueden ver los logs."
+        }, status=403)
+
+    logs = AuditLog.objects.all().order_by('-created_at').values()
+    return JsonResponse(list(logs), safe=False)
