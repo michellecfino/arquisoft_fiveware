@@ -5,12 +5,10 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# --- CONFIGURACIÓN DE SEGURIDAD ---
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-key")
 DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = ["*"] # Para despliegue en EC2
+ALLOWED_HOSTS = ["*"]
 
-# --- APLICACIONES ---
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -18,7 +16,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "logs",  # <--- Debe llamarse como la carpeta de la app que creamos
+    "reportes",
 ]
 
 MIDDLEWARE = [
@@ -31,8 +29,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# CRUCIAL: Cambiar "manejador_reportes" por "manejador_logs"
-ROOT_URLCONF = "manejador_logs.urls"
+ROOT_URLCONF = "manejador_reportes.urls"
+WSGI_APPLICATION = "manejador_reportes.wsgi.application"
 
 TEMPLATES = [
     {
@@ -49,29 +47,20 @@ TEMPLATES = [
     },
 ]
 
-# CRUCIAL: Cambiar "manejador_reportes" por "manejador_logs"
-WSGI_APPLICATION = "manejador_logs.wsgi.application"
-
-# --- CONFIGURACIÓN DE BASES DE DATOS ---
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("AUDIT_DB_NAME", "postgres"),
-        "USER": os.getenv("AUDIT_DB_USER", "postgres"),
-        "PASSWORD": os.getenv("AUDIT_DB_PASSWORD", "postgres123"),
-        "HOST": os.getenv("AUDIT_DB_HOST", "audit-db.c4mxolen2vp8.us-east-1.rds.amazonaws.com"),
-        "PORT": os.getenv("AUDIT_DB_PORT", "5432"),
+        "NAME": os.getenv("DB_NAME", "biteco"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "postgres123"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
-# Al ser un microservicio dedicado, la RDS de auditoría es su "default".
-# No necesitas el multi-db complejo aquí porque este server SOLO hace logs.
-
-# --- INTERNACIONALIZACIÓN ---
 LANGUAGE_CODE = "es-co"
-TIME_ZONE = "America/Bogota" # Ajustado a tu zona horaria
+TIME_ZONE = "America/Bogota"
 USE_I18N = True
 USE_TZ = True
-
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
