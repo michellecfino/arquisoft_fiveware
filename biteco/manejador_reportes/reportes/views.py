@@ -6,7 +6,7 @@ from .logic.log_client import registrar_accion
 # IPs bloqueadas (Revoke Access Handler en memoria)
 _ips_bloqueadas = set()
 _intentos_fallidos = {}
-MAX_INTENTOS = 3
+MAX_INTENTOS = 5001
 
 
 def get_user(request):

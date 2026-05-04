@@ -58,7 +58,7 @@
           <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Headers Autenticacion" enabled="true">
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Headers Autenticacion">
             <collectionProp name="HeaderManager.headers">
               <elementProp name="" elementType="Header">
                 <stringProp name="Header.name">Content-Type</stringProp>
@@ -79,7 +79,7 @@
             </collectionProp>
           </HeaderManager>
           <hashTree/>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Verificar respuesta segun tipo" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Verificar respuesta segun tipo">
             <collectionProp name="Asserion.test_strings">
               <stringProp name="49586">200</stringProp>
               <stringProp name="51511">403</stringProp>
@@ -121,7 +121,7 @@
               <url>true</url>
             </value>
           </objProp>
-          <stringProp name="filename">C:\Users\lssg0\OneDrive\Documentos\Uniandes\IQUI_DISC\Semestre X\Arquitectura de Software\arquisoft_fiveware\biteco\jmeter</stringProp>
+          <stringProp name="filename">C:\Users\lssg0\Desktop\resultados_confidencialidad.jtl</stringProp>
         </ResultCollector>
         <hashTree/>
       </hashTree>
