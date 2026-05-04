@@ -100,12 +100,14 @@ def resumen_reporte_api(request, id_proyecto, anio, mes):
         return JsonResponse(data, status=200)
 
     except Exception as exc:
+        import traceback
+        traceback.print_exc() 
         registrar_accion(
             user["user_id"],
             "ERROR_CONSULTA_REPORTE_API",
             str(exc)
-        )
-        return JsonResponse({"error": str(exc)}, status=400)
+    )
+    return JsonResponse({"error": str(exc)}, status=400)
 
 
 def resumen_reporte_vista(request, id_proyecto, anio, mes):
