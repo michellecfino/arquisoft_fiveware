@@ -4,7 +4,7 @@ from .logic.reportes_logic import obtener_reporte_y_notificar, obtener_empresa_d
 from .logic.log_client import registrar_accion
 
 # IPs bloqueadas (Revoke Access Handler en memoria)
-MAX_INTENTOS = 3
+MAX_INTENTOS = 1
 _usuarios_bloqueados = set()
 _intentos_fallidos = {}
 
