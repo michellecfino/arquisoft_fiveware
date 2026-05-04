@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # --- CONFIGURACIÓN DE SEGURIDAD ---
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-key")
 DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = ["*"] if os.getenv("ALLOWED_HOSTS", "*") == "*" else os.getenv("ALLOWED_HOSTS").split(",")
+ALLOWED_HOSTS = ["*"] # Para despliegue en EC2
 
 # --- APLICACIONES ---
 INSTALLED_APPS = [
@@ -18,8 +18,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "reportes",        # App para el manejo de reportes
-    "manejador_logs",  # App para el manejo de auditoría (logs)
+    "logs",  # <--- Debe llamarse como la carpeta de la app que creamos
 ]
 
 MIDDLEWARE = [
@@ -32,7 +31,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "manejador_reportes.urls"
+# CRUCIAL: Cambiar "manejador_reportes" por "manejador_logs"
+ROOT_URLCONF = "manejador_logs.urls"
 
 TEMPLATES = [
     {
@@ -49,22 +49,12 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "manejador_reportes.wsgi.application"
+# CRUCIAL: Cambiar "manejador_reportes" por "manejador_logs"
+WSGI_APPLICATION = "manejador_logs.wsgi.application"
 
-# --- CONFIGURACIÓN DE BASES DE DATOS (MULTI-DB) ---
-# Aquí separamos la lógica de Reportes de la de Auditoría
+# --- CONFIGURACIÓN DE BASES DE DATOS ---
 DATABASES = {
-    # 1. Base de datos por defecto (para la App de Reportes)
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT", "5432"),
-    },
-    # 2. Base de datos de Auditoría (la RDS "escondida" en AWS)
-    "audit_db": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("AUDIT_DB_NAME", "postgres"),
         "USER": os.getenv("AUDIT_DB_USER", "postgres"),
@@ -74,12 +64,14 @@ DATABASES = {
     }
 }
 
+# Al ser un microservicio dedicado, la RDS de auditoría es su "default".
+# No necesitas el multi-db complejo aquí porque este server SOLO hace logs.
+
 # --- INTERNACIONALIZACIÓN ---
 LANGUAGE_CODE = "es-co"
-TIME_ZONE = "UTC"
+TIME_ZONE = "America/Bogota" # Ajustado a tu zona horaria
 USE_I18N = True
 USE_TZ = True
 
-# --- ARCHIVOS ESTÁTICOS ---
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
