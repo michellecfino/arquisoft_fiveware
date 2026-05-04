@@ -1,7 +1,6 @@
-from django.contrib import admin
-from django.urls import path, include
+from django.urls import path
+from . import views  # Importación relativa correcta
 
 urlpatterns = [
-    path('admin/', admin.py),
-    path('', include('logs.urls')),
+    path('audit/log/', views.registrar_log, name='registrar_log'),
 ]
