@@ -218,3 +218,15 @@ def obtener_reporte_y_notificar(id_proyecto, anio, mes):
         "estado_notificacion": meta["estado_notificacion"],
         "reporte": reporte,
     }
+
+def obtener_empresa_de_proyecto(id_proyecto):
+    """Retorna el id_empresa al que pertenece el proyecto."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT id_empresa FROM nucleo.proyectos WHERE id_proyecto = %s",
+            [id_proyecto],
+        )
+        row = cursor.fetchone()
+    if not row:
+        raise ValueError(f"Proyecto {id_proyecto} no existe")
+    return row[0]
