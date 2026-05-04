@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import registrar_log
+from .views import registrar_log, listar_logs
 
 urlpatterns = [
-    path("audit/log/", registrar_log),
+    path("log/", registrar_log),
+    path("view/", listar_logs), 
 ]
