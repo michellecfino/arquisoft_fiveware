@@ -199,18 +199,11 @@ def publicar_en_broker(payload):
 
 def obtener_reporte_y_notificar(id_proyecto, anio, mes):
     reporte = obtener_reporte(id_proyecto, anio, mes)
-    meta = registrar_reporte_y_notificacion(
-        id_proyecto=id_proyecto,
-        anio=anio,
-        mes=mes,
-        reporte=reporte,
-    )
-
     return {
-        "id_reporte": meta["id_reporte"],
-        "id_notificacion": meta["id_notificacion"],
-        "request_id": meta["request_id"],
-        "estado_notificacion": meta["estado_notificacion"],
+        "id_reporte": 0,
+        "id_notificacion": 0,
+        "request_id": str(uuid.uuid4()),
+        "estado_notificacion": "Sin notificacion en experimento",
         "reporte": reporte,
     }
 
