@@ -1,17 +1,13 @@
-import requests
-import os
+import logging
 
-AUDIT_URL = os.getenv("AUDIT_URL", "http://manejador_logs:8001/audit/log/")
+logger = logging.getLogger(__name__)
 
-def registrar_accion(user_id, action, metadata=""):
-    mensaje_completo = f"[{action}] - {metadata}"
-    
-    payload = {
-        "level": "INFO" if "ERROR" not in action else "ERROR",
-        "message": f"User: {user_id} | {mensaje_completo}"
-    }
-
+def registrar_accion(user_id, accion, detalle=""):
+    """
+    En el experimento de confidencialidad no hay manejador de logs separado.
+    Registramos solo en el log local de Django.
+    """
     try:
-        requests.post(AUDIT_URL, json=payload, timeout=3)
+        logger.info(f"AUDIT | user={user_id} | accion={accion} | detalle={detalle}")
     except Exception as e:
-        print(f"Error enviando log: {e}")
+        pass
