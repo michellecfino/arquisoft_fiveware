@@ -1,49 +1,54 @@
 import csv
-
-salida = "biteco/jmeter/data/solicitudes_confidencialidad.csv"
-
-filas = []
-
-# ── 5000 usuarios AUTORIZADOS ──────────────────────────
-# Empresa 1 accede a proyectos de empresa 1 (id_empresa=1)
-# Los proyectos 1-15 pertenecen a empresa 1 (según el seed)
-for i in range(5000):
-    proyecto_id = (i % 15) + 1       # proyectos 1-15 → empresa 1
-    empresa_usuario = 1               # usuario dice ser de empresa 1 ✓
-    filas.append({
-        "tipo":          "autorizado",
-        "id_proyecto":   proyecto_id,
-        "anio":          2026,
-        "mes":           (i % 4) + 1,
-        "user_id":       f"user-emp1-{i}",
-        "empresa_id":    empresa_usuario,  # coincide con la del proyecto
-    })
-
-# ── 5000 usuarios NO AUTORIZADOS ──────────────────────
-# Empresa 2 intenta acceder a proyectos de empresa 1
-for i in range(5000):
-    proyecto_id = (i % 15) + 1       # proyectos 1-15 → empresa 1
-    empresa_usuario = 2               # usuario dice ser de empresa 2 ✗
-    filas.append({
-        "tipo":          "no_autorizado",
-        "id_proyecto":   proyecto_id,
-        "anio":          2026,
-        "mes":           (i % 4) + 1,
-        "user_id":       f"user-emp2-{i}",
-        "empresa_id":    empresa_usuario,  # NO coincide → debe dar 403
-    })
-
-# Crear carpeta si no existe
 import os
-os.makedirs(os.path.dirname(salida), exist_ok=True)
 
-with open(salida, "w", newline="", encoding="utf-8") as f:
-    writer = csv.DictWriter(f, fieldnames=[
-        "tipo", "id_proyecto", "anio", "mes", "user_id", "empresa_id"
-    ])
+os.makedirs("biteco/jmeter/data", exist_ok=True)
+
+# Proyectos de empresa 1: 1, 41, 81, ... (75 proyectos, salto de 40)
+proyectos_empresa1 = [1 + (i * 40) for i in range(75)]
+
+# Proyectos de empresa 2: 2, 42, 82, ... (75 proyectos, salto de 40)
+proyectos_empresa2 = [2 + (i * 40) for i in range(75)]
+
+filas_auth = []
+filas_no_auth = []
+
+# Autorizados: empresa 1 accede a sus propios proyectos
+for i in range(500):
+    proyecto_id = proyectos_empresa1[i % len(proyectos_empresa1)]
+    filas_auth.append({
+        "tipo": "autorizado",
+        "id_proyecto": proyecto_id,
+        "anio": 2026,
+        "mes": (i % 4) + 1,
+        "user_id": f"user-emp1-{i}",
+        "empresa_id": 1,
+    })
+
+# No autorizados: empresa 2 intenta acceder a proyectos de empresa 1
+for i in range(500):
+    proyecto_id = proyectos_empresa1[i % len(proyectos_empresa1)]
+    filas_no_auth.append({
+        "tipo": "no_autorizado",
+        "id_proyecto": proyecto_id,
+        "anio": 2026,
+        "mes": (i % 4) + 1,
+        "user_id": f"user-emp2-{i}",
+        "empresa_id": 2,
+    })
+
+header = ["tipo", "id_proyecto", "anio", "mes", "user_id", "empresa_id"]
+
+with open("biteco/jmeter/data/autorizados.csv", "w", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=header)
     writer.writeheader()
-    writer.writerows(filas)
+    writer.writerows(filas_auth)
 
-print(f"CSV generado con {len(filas)} filas")
-print(f"  - Autorizados:     5000")
-print(f"  - No autorizados:  5000")
+with open("biteco/jmeter/data/no_autorizados.csv", "w", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=header)
+    writer.writeheader()
+    writer.writerows(filas_no_auth)
+
+print(f"Autorizados: {len(filas_auth)} filas")
+print(f"No autorizados: {len(filas_no_auth)} filas")
+print(f"Ejemplo autorizado: proyecto {filas_auth[0]['id_proyecto']} empresa {filas_auth[0]['empresa_id']}")
+print(f"Ejemplo no autorizado: proyecto {filas_no_auth[0]['id_proyecto']} empresa {filas_no_auth[0]['empresa_id']}")
