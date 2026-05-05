@@ -1,6 +1,7 @@
 from django.urls import path
-from . import views  # Importación relativa correcta
+from . import views
 
 urlpatterns = [
-    path('audit/log/', views.registrar_log, name='registrar_log'),
+    path('audit/log/', views.registrar_log),
+    path('audit/logs/', views.listar_logs),
 ]

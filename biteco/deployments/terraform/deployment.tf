@@ -1,5 +1,5 @@
 # =========================================================
-# Infraestructura INTEGRIDAD - BITECO
+# Infraestructura INTEGRIDAD - BITECO (CORREGIDA)
 # =========================================================
 
 terraform {
@@ -28,9 +28,6 @@ variable "instance_type" {
   default = "t2.micro"
 }
 
-variable "auth0_domain" {}
-variable "auth0_audience" {}
-
 provider "aws" {
   region = var.region
 }
@@ -50,17 +47,23 @@ data "aws_ami" "ubuntu" {
 }
 
 # =========================================================
-# SECURITY GROUPS (CORRECTOS)
+# SECURITY GROUPS
 # =========================================================
 
-# API Gateway (Kong)
+# Kong público
 resource "aws_security_group" "api_sg" {
   name = "${var.project_prefix}-api-sg"
 
   ingress {
-    description = "HTTPS from Internet"
-    from_port   = 443
-    to_port     = 443
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 8001
+    to_port     = 8001
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -73,22 +76,18 @@ resource "aws_security_group" "api_sg" {
   }
 }
 
-# Servicios (Reportes)
+# Servicios internos (reportes)
 resource "aws_security_group" "services_sg" {
   name = "${var.project_prefix}-services-sg"
 
-  # SOLO desde API Gateway
   ingress {
-    description     = "From API Gateway"
     from_port       = 8000
     to_port         = 8000
     protocol        = "tcp"
     security_groups = [aws_security_group.api_sg.id]
   }
 
-  # Comunicación interna
   ingress {
-    description = "Internal communication"
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
@@ -103,12 +102,11 @@ resource "aws_security_group" "services_sg" {
   }
 }
 
-# Auditoría (Logs)
+# Auditoría
 resource "aws_security_group" "audit_sg" {
   name = "${var.project_prefix}-audit-sg"
 
   ingress {
-    description     = "Only from services"
     from_port       = 8001
     to_port         = 8001
     protocol        = "tcp"
@@ -123,29 +121,9 @@ resource "aws_security_group" "audit_sg" {
   }
 }
 
-# BD Auditoría
-resource "aws_security_group" "audit_db_sg" {
-  name = "${var.project_prefix}-audit-db-sg"
-
-  ingress {
-    description     = "Only from audit service"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.audit_sg.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# SSH (solo pruebas)
+# SSH (reportes incluido)
 resource "aws_security_group" "ssh_sg" {
-  name = "${var.project_prefix}-ssh"
+  name = "${var.project_prefix}-ssh-sg"
 
   ingress {
     from_port   = 22
@@ -162,36 +140,52 @@ resource "aws_security_group" "ssh_sg" {
   }
 }
 
-# =========================================================
-# API GATEWAY + AUTH0
-# =========================================================
+# DB auditoría
+resource "aws_security_group" "audit_db_sg" {
+  name = "${var.project_prefix}-audit-db-sg"
 
-resource "aws_apigatewayv2_api" "api" {
-  name          = "biteco-api"
-  protocol_type = "HTTP"
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.audit_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
-resource "aws_apigatewayv2_authorizer" "auth0" {
-  api_id          = aws_apigatewayv2_api.api.id
-  authorizer_type = "JWT"
+# DB reportes
+resource "aws_security_group" "reportes_db_sg" {
+  name = "${var.project_prefix}-reportes-db-sg"
 
-  identity_sources = ["$request.header.Authorization"]
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.services_sg.id]
+  }
 
-  name = "auth0-authorizer"
-
-  jwt_configuration {
-    issuer   = "https://${var.auth0_domain}/"
-    audience = [var.auth0_audience]
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
 # =========================================================
-# EC2 - KONG (ÚNICO PUNTO PÚBLICO)
+# KONG (PÚBLICO)
 # =========================================================
 
 resource "aws_instance" "kong" {
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = var.instance_type
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = var.instance_type
+
   associate_public_ip_address = true
 
   vpc_security_group_ids = [
@@ -205,18 +199,19 @@ resource "aws_instance" "kong" {
 }
 
 # =========================================================
-# CLUSTER REPORTES (PRIVADO)
+# REPORTES (4 INSTANCIAS)
 # =========================================================
 
 resource "aws_instance" "reportes" {
-  count         = 3
+  count         = 4
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
 
   associate_public_ip_address = false
 
   vpc_security_group_ids = [
-    aws_security_group.services_sg.id
+    aws_security_group.services_sg.id,
+    aws_security_group.ssh_sg.id
   ]
 
   tags = {
@@ -225,7 +220,7 @@ resource "aws_instance" "reportes" {
 }
 
 # =========================================================
-# MANEJADOR LOGS (PRIVADO)
+# AUDITORÍA
 # =========================================================
 
 resource "aws_instance" "audit" {
@@ -245,7 +240,7 @@ resource "aws_instance" "audit" {
 }
 
 # =========================================================
-# RDS AUDITORÍA (AISLADA)
+# RDS AUDITORÍA
 # =========================================================
 
 resource "aws_db_instance" "audit_db" {
@@ -265,6 +260,28 @@ resource "aws_db_instance" "audit_db" {
 }
 
 # =========================================================
+# RDS REPORTES
+# =========================================================
+
+resource "aws_db_instance" "reportes_db" {
+  identifier = "reportes-db"
+
+  engine            = "postgres"
+  instance_class    = "db.t3.micro"
+  allocated_storage = 20
+
+  username = "postgres"
+  password = "postgres123"
+
+  db_name = "reportes"
+
+  publicly_accessible    = false
+  vpc_security_group_ids = [aws_security_group.reportes_db_sg.id]
+
+  skip_final_snapshot = true
+}
+
+# =========================================================
 # OUTPUTS
 # =========================================================
 
@@ -272,8 +289,8 @@ output "kong_ip" {
   value = aws_instance.kong.public_ip
 }
 
-output "api_gateway_url" {
-  value = aws_apigatewayv2_api.api.api_endpoint
+output "reportes_db_endpoint" {
+  value = aws_db_instance.reportes_db.address
 }
 
 output "audit_db_endpoint" {

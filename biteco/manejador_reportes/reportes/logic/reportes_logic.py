@@ -8,26 +8,6 @@ from django.db import connection
 CORREO_DESTINO_FIJO = "usuario_test@biteco.com"
 
 
-def publicar_en_broker(payload):
-    url = (
-        f"http://{os.getenv('RABBITMQ_HOST')}:{os.getenv('RABBITMQ_API_PORT')}"
-        f"/api/exchanges/%2F/{os.getenv('RABBITMQ_EXCHANGE')}/publish"
-    )
-
-    body = {
-        "properties": {},
-        "routing_key": os.getenv("RABBITMQ_ROUTING_KEY"),
-        "payload": json.dumps(payload),
-        "payload_encoding": "string",
-    }
-
-    response = requests.post(
-        url,
-        auth=(os.getenv("RABBITMQ_USER"), os.getenv("RABBITMQ_PASSWORD")),
-        json=body,
-        timeout=10,
-    )
-    response.raise_for_status()
 
 
 def obtener_contexto_solicitud(id_proyecto):
@@ -202,7 +182,10 @@ def registrar_reporte_y_notificacion(id_proyecto, anio, mes, reporte):
     }
 
 
-def obtener_reporte_y_notificar(id_proyecto, anio, mes):
+LOG_SERVICE_URL = "http://TU-IP-PRIVADA-LOGS:8000/audit/log/"
+
+
+def obtener_reporte_y_notificar(id_proyecto, anio, mes, user_id="anonymous", user_role="USER"):
     reporte = obtener_reporte(id_proyecto, anio, mes)
     meta = registrar_reporte_y_notificacion(
         id_proyecto=id_proyecto,
@@ -211,6 +194,23 @@ def obtener_reporte_y_notificar(id_proyecto, anio, mes):
         reporte=reporte,
     )
 
+    #REGISTRAR LOG
+    try:
+        requests.post(
+            LOG_SERVICE_URL,
+            headers={
+                "X-Internal-Token": "super-secret",
+                "X-User-Id": str(user_id),
+                "X-User-Role": user_role
+            },
+            json={
+                "service": "reportes",
+                "action": f"Generó reporte proyecto={id_proyecto}, periodo={mes}/{anio}"
+            },
+            timeout=2
+        )
+    except Exception:
+        pass
     return {
         "id_reporte": meta["id_reporte"],
         "id_notificacion": meta["id_notificacion"],

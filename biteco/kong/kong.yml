@@ -5,13 +5,36 @@ services:
     host: upstream-reportes
     port: 8000
     protocol: http
+
     routes:
       - name: reportes-route
         paths:
           - /api/reportes
           - /reportes
         strip_path: false
-      
+
+    plugins:
+      # AUTENTICACIÓN REAL CON AUTH0 (OIDC)
+      - name: openid-connect
+        config:
+          issuer: https://dev-jhgzy7g2uwdoc7jh.us.auth0.com/
+          client_id: YOUR_CLIENT_ID
+          client_secret: YOUR_CLIENT_SECRET
+
+          auth_methods:
+            - bearer
+
+          verify_signature: true
+
+          # EXTRAER CLAIMS DEL JWT Y PASARLOS AL BACKEND
+          claims_to_headers:
+            - sub:X-User-Id
+            - https://biteco/role:X-User-Role
+
+          # opcional pero recomendado
+          bearer_only: "yes"
+          ssl_verify: "no"
+
 upstreams:
   - name: upstream-reportes
     algorithm: least-connections

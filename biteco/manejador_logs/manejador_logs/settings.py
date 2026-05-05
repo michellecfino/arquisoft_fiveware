@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY", "audit-secret-key-123")
 DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = ["*"] # O la IP de tu instancia 3.90.190.188
+ALLOWED_HOSTS = ["3.90.190.188", "localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",

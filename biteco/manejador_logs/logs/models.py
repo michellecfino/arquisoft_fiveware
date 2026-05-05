@@ -8,12 +8,14 @@ class AuditLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
+        #Evita UPDATE
         if self.pk is not None:
-            raise Exception("UPDATE NOT ALLOWED")
+            raise Exception("Audit logs are immutable (UPDATE not allowed)")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        raise Exception("DELETE NOT ALLOWED")
+        # Evita DELETE
+        raise Exception("Audit logs are immutable (DELETE not allowed)")
 
     class Meta:
-        db_table = "audit_logs"
+        db_table = "audit_logs""
