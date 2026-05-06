@@ -5,7 +5,7 @@ import requests
 from django.db import connection
 
 CORREO_DESTINO_FIJO = "usuario_test@biteco.com"
-LOG_SERVICE_URL = "http://172.31.20.28:8000/audit/log/"
+LOG_SERVICE_URL = "http://172.31.20.28:8001/audit/log/"
 
 
 def obtener_contexto_solicitud(id_proyecto):
