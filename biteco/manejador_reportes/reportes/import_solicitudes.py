@@ -6,7 +6,7 @@ from django.utils import timezone
 # -----------------------------
 # Ajuste de PYTHONPATH
 # -----------------------------
-# Permite que Python encuentre el paquete manejador_reportes
+# Permite que Python vea la app manejador_reportes
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # -----------------------------
@@ -17,10 +17,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "manejador_reportes.settings")
 django.setup()
 
 # -----------------------------
-# Importar modelos
+# Importar modelos desde la app reportes
 # -----------------------------
-from reportes.models import ReporteGenerado
-from nucleo.models import Proyecto, Usuario
+from reportes.models import ReporteGenerado, Proyecto, Usuario
 
 # -----------------------------
 # Configuración del CSV
@@ -32,15 +31,11 @@ CSV_PATH = os.path.expanduser(
 # -----------------------------
 # Preparar datos
 # -----------------------------
-# Obtener un usuario de prueba (ajusta si quieres otro)
 usuario = Usuario.objects.first()
 if not usuario:
     raise Exception("No hay usuarios en la base de datos. Crea al menos uno.")
 
-# Lista para almacenar los objetos a insertar
 registros_a_crear = []
-
-# Contador para generar request_id único
 counter = 1
 
 # -----------------------------
@@ -58,7 +53,7 @@ with open(CSV_PATH, newline='') as csvfile:
                 id_usuario=usuario.id_usuario,
                 anio=int(row['anio']),
                 mes=int(row['mes']),
-                moneda='COP',  # Ajusta si quieres 'USD' o 'EUR'
+                moneda='COP',  # Ajusta a tu necesidad
                 total_costo=0,
                 cantidad_registros=0,
                 request_id=f'test-{counter}',
@@ -68,7 +63,7 @@ with open(CSV_PATH, newline='') as csvfile:
             registros_a_crear.append(reporte)
             counter += 1
 
-            # Insertar en bloques de 1000 para no saturar la memoria
+            # Insertar en bloques de 1000
             if len(registros_a_crear) >= 1000:
                 ReporteGenerado.objects.bulk_create(registros_a_crear)
                 registros_a_crear = []
