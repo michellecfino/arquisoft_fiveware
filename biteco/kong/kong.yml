@@ -3,7 +3,7 @@ _format_version: "2.1"
 services:
   - name: manejador-reportes
     host: upstream-reportes
-    port: 8000
+    port: 8080
     protocol: http
     routes:
       - name: reportes-route
