@@ -194,7 +194,8 @@ def obtener_reporte_y_notificar(id_proyecto, anio, mes, user_id="anonymous", use
             headers={
                 "X-Internal-Token": "super-secret",
                 "X-User-Id": str(user_id),
-                "X-User-Role": user_role
+                "X-User-Role": user_role,
+                "Content-Type": "application/json",
             },
             json={
                 "service": "reportes",
