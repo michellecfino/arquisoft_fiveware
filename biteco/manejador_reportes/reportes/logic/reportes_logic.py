@@ -4,10 +4,8 @@ import uuid
 import requests
 from django.db import connection
 
-
 CORREO_DESTINO_FIJO = "usuario_test@biteco.com"
-
-
+LOG_SERVICE_URL = "http://172.31.20.28:8000/audit/log/"
 
 
 def obtener_contexto_solicitud(id_proyecto):
@@ -48,6 +46,7 @@ def obtener_contexto_solicitud(id_proyecto):
 
 def obtener_reporte(id_proyecto, anio, mes):
     with connection.cursor() as cursor:
+        # Consulta resumen general
         cursor.execute(
             """
             SELECT
@@ -67,9 +66,18 @@ def obtener_reporte(id_proyecto, anio, mes):
         )
         resumen = cursor.fetchone()
 
+        # Si no hay datos, devolvemos JSON vacío (no error)
         if not resumen:
-            raise ValueError("No hay datos para ese proyecto y periodo")
+            return {
+                "id_proyecto": id_proyecto,
+                "periodo": {"anio": anio, "mes": mes},
+                "moneda": None,
+                "costo_total_mes": 0,
+                "cantidad_registros_consolidados": 0,
+                "desglose_por_servicio": [],
+            }
 
+        # Consulta desglose por servicio
         cursor.execute(
             """
             SELECT
@@ -162,25 +170,12 @@ def registrar_reporte_y_notificacion(id_proyecto, anio, mes, reporte):
         )
         id_notificacion = cursor.fetchone()[0]
 
-    payload = {
-        "id_notificacion": id_notificacion,
-        "id_reporte": id_reporte,
-        "id_usuario": id_usuario,
-        "correo_destino": correo_destino,
-        "mensaje": mensaje,
-        "url_acceso": url_acceso,
-        "request_id": request_id,
-    }
-
     return {
         "id_reporte": id_reporte,
         "id_notificacion": id_notificacion,
         "request_id": request_id,
         "estado_notificacion": "Encolada",
     }
-
-
-LOG_SERVICE_URL = "http://172.31.20.28:8000/audit/log/"
 
 
 def obtener_reporte_y_notificar(id_proyecto, anio, mes, user_id="anonymous", user_role="USER"):
@@ -192,7 +187,7 @@ def obtener_reporte_y_notificar(id_proyecto, anio, mes, user_id="anonymous", use
         reporte=reporte,
     )
 
-    #REGISTRAR LOG
+    # Registrar log
     try:
         requests.post(
             LOG_SERVICE_URL,
@@ -209,6 +204,8 @@ def obtener_reporte_y_notificar(id_proyecto, anio, mes, user_id="anonymous", use
         )
     except Exception:
         pass
+
+    # Retornar siempre JSON válido (HTTP 200)
     return {
         "id_reporte": meta["id_reporte"],
         "id_notificacion": meta["id_notificacion"],
