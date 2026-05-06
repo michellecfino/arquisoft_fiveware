@@ -2,17 +2,19 @@ _format_version: "2.1"
 
 services:
   - name: manejador-reportes
-    host: upstream-reportes
-    port: 8080
+    host: upstream-reportes      # Nombre del upstream
+    port: 8080                   # Puerto donde corre Django en cada instancia
     protocol: http
+    connect_timeout: 10000       # 10 segundos para conectarse al backend
+    read_timeout: 10000          # 10 segundos para recibir respuesta
+    write_timeout: 10000         # 10 segundos para enviar request
     routes:
       - name: reportes-route
         paths:
           - /api/reportes
           - /reportes
         strip_path: false
-    # Quitar plugins Enterprise si solo usas OSS
-    plugins: []
+    plugins: []                  # Sin plugins Enterprise
 
 upstreams:
   - name: upstream-reportes
