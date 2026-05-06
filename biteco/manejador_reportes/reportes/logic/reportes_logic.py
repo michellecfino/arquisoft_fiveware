@@ -172,8 +172,6 @@ def registrar_reporte_y_notificacion(id_proyecto, anio, mes, reporte):
         "request_id": request_id,
     }
 
-    publicar_en_broker(payload)
-
     return {
         "id_reporte": id_reporte,
         "id_notificacion": id_notificacion,
