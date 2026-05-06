@@ -2,8 +2,8 @@ _format_version: "2.1"
 
 services:
   - name: manejador-reportes
-    host: upstream-reportes
-    port: 8080
+    host: upstream-reportes   # El nombre de tu upstream
+    port: 8080               # Puerto donde corre Django
     protocol: http
     routes:
       - name: reportes-route
@@ -12,25 +12,16 @@ services:
           - /reportes
         strip_path: false
     plugins:
-      - name: openid-connect
+      - name: jwt
         config:
-          issuer: https://dev-jhgzy7g2uwdoc7jh.us.auth0.com/
-          client_id: jWpdO0g8IyUnL4EDSzjz6n7iPt89q6Uq
-          client_secret: p9ltt-WsnSmobYFYaCgicq7SU1dScwELZPIy9OlVJB7HWXrENsS0PEpdTMTeg497
-          auth_methods:
-            - bearer
-          verify_signature: true
-          claims_to_headers:
-            - sub:X-User-Id
-            - https://biteco/role:X-User-Role
-          bearer_only: "yes"
-          ssl_verify: "no"
+          claims_to_verify: ["exp", "aud"]  # Validamos expiración y audience
+          key_claim_name: "iss"              # Opcional, si quieres validar issuer
 
 upstreams:
   - name: upstream-reportes
     algorithm: least-connections
     targets:
-      - target: 172.31.17.51:8080  # privada
+      - target: 172.31.17.51:8080
       - target: 172.31.26.43:8080
       - target: 172.31.18.237:8080
       - target: 172.31.17.54:8080
