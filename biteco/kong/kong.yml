@@ -2,8 +2,8 @@ _format_version: "2.1"
 
 services:
   - name: manejador-reportes
-    host: upstream-reportes   # El nombre de tu upstream
-    port: 8080               # Puerto donde corre Django
+    host: upstream-reportes
+    port: 8080
     protocol: http
     routes:
       - name: reportes-route
@@ -14,8 +14,9 @@ services:
     plugins:
       - name: jwt
         config:
-          claims_to_verify: ["exp", "aud"]  # Validamos expiración y audience
-          key_claim_name: "iss"              # Opcional, si quieres validar issuer
+          claims_to_verify:
+            - exp   # obligatorio
+          key_claim_name: iss
 
 upstreams:
   - name: upstream-reportes
