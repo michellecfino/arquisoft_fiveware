@@ -2,19 +2,29 @@ _format_version: "2.1"
 
 services:
   - name: manejador-reportes
-    host: upstream-reportes      # Nombre del upstream
-    port: 8080                   # Puerto donde corre Django en cada instancia
+    host: upstream-reportes
+    port: 8080
     protocol: http
-    connect_timeout: 10000       # 10 segundos para conectarse al backend
-    read_timeout: 10000          # 10 segundos para recibir respuesta
-    write_timeout: 10000         # 10 segundos para enviar request
     routes:
       - name: reportes-route
         paths:
           - /api/reportes
           - /reportes
         strip_path: false
-    plugins: []                  # Sin plugins Enterprise
+    plugins:
+      - name: openid-connect
+        config:
+          issuer: https://dev-jhgzy7g2uwdoc7jh.us.auth0.com/
+          client_id: jWpdO0g8IyUnL4EDSzjz6n7iPt89q6Uq
+          client_secret: p9ltt-WsnSmobYFYaCgicq7SU1dScwELZPIy9OlVJB7HWXrENsS0PEpdTMTeg497
+          auth_methods:
+            - bearer
+          verify_signature: true
+          claims_to_headers:
+            - sub:X-User-Id
+            - https://biteco/role:X-User-Role
+          bearer_only: "yes"
+          ssl_verify: "no"
 
 upstreams:
   - name: upstream-reportes
