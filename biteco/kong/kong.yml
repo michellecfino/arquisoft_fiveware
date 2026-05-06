@@ -1,5 +1,24 @@
 _format_version: "2.1"
 
+# -----------------------------
+# CONSUMERS (usuarios y JWT)
+# -----------------------------
+consumers:
+  - username: admin
+    jwt_secrets:
+      - key: "https://biteco/api"
+        secret: "superclave_prueba_123456"
+        algorithm: HS256
+
+  - username: user
+    jwt_secrets:
+      - key: "https://biteco/api"
+        secret: "superclave_prueba_123456"
+        algorithm: HS256
+
+# -----------------------------
+# SERVICIOS (upstream Django reportes)
+# -----------------------------
 services:
   - name: manejador-reportes
     host: upstream-reportes
@@ -15,9 +34,12 @@ services:
       - name: jwt
         config:
           claims_to_verify:
-            - exp   # obligatorio
-          key_claim_name: iss
+            - exp
+          key_claim_name: iss  # 'iss' del JWT será usado para buscar credenciales
 
+# -----------------------------
+# UPSTREAMS (balanceo simple)
+# -----------------------------
 upstreams:
   - name: upstream-reportes
     algorithm: least-connections
