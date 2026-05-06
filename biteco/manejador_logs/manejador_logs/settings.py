@@ -14,6 +14,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "manejador_logs", # Tu app de auditoría
+    "logs",
 ]
 
 MIDDLEWARE = [
