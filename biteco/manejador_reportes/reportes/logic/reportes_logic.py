@@ -5,7 +5,7 @@ import requests
 from django.db import connection
 
 CORREO_DESTINO_FIJO = "usuario_test@biteco.com"
-LOG_SERVICE_URL = "http://172.31.20.28:8001/audit/log/"
+LOG_SERVICE_URL = "http://172.31.20.28:8001/audit/log/"  # audit-server
 
 
 def obtener_contexto_solicitud(id_proyecto):
@@ -66,7 +66,7 @@ def obtener_reporte(id_proyecto, anio, mes):
         )
         resumen = cursor.fetchone()
 
-        # Si no hay datos, devolvemos JSON vacío (no error)
+        # Si no hay datos, devolver JSON vacío
         if not resumen:
             return {
                 "id_proyecto": id_proyecto,
@@ -178,6 +178,27 @@ def registrar_reporte_y_notificacion(id_proyecto, anio, mes, reporte):
     }
 
 
+# 🔹 Función para enviar log al audit-server con debug en consola
+def enviar_log(user_id, user_role, service, action):
+    payload = {"service": service, "action": action}
+    headers = {
+        "X-Internal-Token": "super-secret",
+        "X-User-Id": str(user_id),
+        "X-User-Role": user_role,
+        "Content-Type": "application/json",
+    }
+    try:
+        resp = requests.post(
+            LOG_SERVICE_URL,
+            headers=headers,
+            data=json.dumps(payload),
+            timeout=2
+        )
+        print(f"[LOG] Código respuesta: {resp.status_code}, contenido: {resp.text}")
+    except Exception as e:
+        print(f"[LOG] Error al enviar log: {e}")
+
+
 def obtener_reporte_y_notificar(id_proyecto, anio, mes, user_id="anonymous", user_role="USER"):
     reporte = obtener_reporte(id_proyecto, anio, mes)
     meta = registrar_reporte_y_notificacion(
@@ -187,26 +208,14 @@ def obtener_reporte_y_notificar(id_proyecto, anio, mes, user_id="anonymous", use
         reporte=reporte,
     )
 
-    # Registrar log
-    try:
-        requests.post(
-            LOG_SERVICE_URL,
-            headers={
-                "X-Internal-Token": "super-secret",
-                "X-User-Id": str(user_id),
-                "X-User-Role": user_role,
-                "Content-Type": "application/json",
-            },
-            json={
-                "service": "reportes",
-                "action": f"Generó reporte proyecto={id_proyecto}, periodo={mes}/{anio}"
-            },
-            timeout=2
-        )
-    except Exception:
-        pass
+    # 🔹 Registrar log y mostrar en consola
+    enviar_log(
+        user_id=user_id,
+        user_role=user_role,
+        service="reportes",
+        action=f"Generó reporte proyecto={id_proyecto}, periodo={mes}/{anio}"
+    )
 
-    # Retornar siempre JSON válido (HTTP 200)
     return {
         "id_reporte": meta["id_reporte"],
         "id_notificacion": meta["id_notificacion"],
