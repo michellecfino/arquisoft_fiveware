@@ -20,7 +20,7 @@ upstreams:
   - name: upstream-reportes
     algorithm: least-connections
     targets:
-      - target: 54.198.72.197:8080
-      - target: 54.235.57.153:8080
-      - target: 54.82.13.45:8080
-      - target: 100.54.231.47:8080
+      - target: 172.31.17.51:8080  # privada
+      - target: 172.31.26.43:8080
+      - target: 172.31.18.237:8080
+      - target: 172.31.17.54:8080
