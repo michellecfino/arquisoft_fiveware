@@ -180,7 +180,7 @@ def registrar_reporte_y_notificacion(id_proyecto, anio, mes, reporte):
     }
 
 
-LOG_SERVICE_URL = "http://TU-IP-PRIVADA-LOGS:8000/audit/log/"
+LOG_SERVICE_URL = "http://172.31.20.28:8000/audit/log/"
 
 
 def obtener_reporte_y_notificar(id_proyecto, anio, mes, user_id="anonymous", user_role="USER"):
