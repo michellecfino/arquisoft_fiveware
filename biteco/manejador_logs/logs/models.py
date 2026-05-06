@@ -18,4 +18,4 @@ class AuditLog(models.Model):
         raise Exception("Audit logs are immutable (DELETE not allowed)")
 
     class Meta:
-        db_table = "audit_logs""
+        db_table = "audit_logs"

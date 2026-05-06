@@ -1,6 +1,6 @@
 from reportes.services.logs_client import registrar_evento
 
-LOG_SERVICE_URL = "http://TU-IP-PRIVADA-LOGS:8000/audit/log/"
+LOG_SERVICE_URL = "http://172.31.20.28:8001/audit/log/"
 
 def registrar_evento(user_id, user_role, action):
     try:
