@@ -2,68 +2,46 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BITE.co | Panel de Auditoría</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .dashboard-header { background: #2c3e50; color: white; padding: 2rem 0; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .card-table { background: white; border-radius: 12px; border: none; box-shadow: 0 8px 24px rgba(0,0,0,0.05); padding: 20px; }
-        .badge-service { background-color: #e67e22; color: white; font-weight: 500; }
-        .badge-role { background-color: #3498db; }
+        body { background-color: #f4f7f6; }
+        .header-box { background: #2c3e50; color: white; padding: 25px; margin-bottom: 30px; border-radius: 0 0 20px 20px; }
+        .card-logs { background: white; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; }
+        .badge-service { background-color: #e67e22; }
     </style>
 </head>
 <body>
-
-<div class="dashboard-header text-center">
-    <div class="container">
-        <h1>Consola de Integridad BITE.co</h1>
-        <p class="lead mb-0">Visualización de Logs en Tiempo Real (RDS PostgreSQL)</p>
+    <div class="header-box text-center">
+        <h1>🔍 Consola de Auditoría BITE.co</h1>
+        <p>Registros de Integridad en AWS RDS</p>
     </div>
-</div>
 
-<div class="container">
-    <div class="card card-table">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="m-0 text-secondary">Historial de Auditoría</h4>
-            <button onclick="location.reload()" class="btn btn-outline-primary btn-sm">🔄 Refrescar Datos</button>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
+    <div class="container">
+        <div class="card-logs">
+            <table class="table table-hover">
+                <thead class="table-dark">
                     <tr>
                         <th>Timestamp (UTC)</th>
-                        <th>Identidad</th>
-                        <th>Origen</th>
-                        <th>Acción Registrada</th>
+                        <th>Usuario</th>
+                        <th>Servicio</th>
+                        <th>Acción</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for log in logs %}
                     <tr>
-                        <td class="text-muted" style="font-size: 0.9rem;">{{ log.created_at|date:"d/m/Y H:i:s" }}</td>
-                        <td>
-                            <span class="fw-bold">{{ log.user_id }}</span><br>
-                            <span class="badge badge-role" style="font-size: 0.7rem;">{{ log.role }}</span>
-                        </td>
+                        <td>{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+                        <td><strong>{{ log.user_id }}</strong> <small>({{ log.role }})</small></td>
                         <td><span class="badge badge-service">{{ log.service|upper }}</span></td>
-                        <td class="text-dark">{{ log.action }}</td>
+                        <td>{{ log.action }}</td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center py-4 text-muted">No se encontraron logs en la base de datos.</td>
-                    </tr>
+                    <tr><td colspan="4" class="text-center">No hay logs registrados.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
-    
-    <footer class="text-center mt-5 pb-4 text-muted">
-        <small>Arquitectura de Integridad - Proyecto BITE.co - 2026</small>
-    </footer>
-</div>
-
 </body>
 </html>

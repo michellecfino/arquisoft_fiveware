@@ -1,6 +1,6 @@
 from pathlib import Path
 import os
-import boto3  # <--- IMPORTANTE: Agrégalo aquí
+import boto3
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,27 +11,47 @@ SECRET_KEY = os.getenv("SECRET_KEY", "audit-secret-key-123")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
-    "3.80.36.86",       # La IP Pública de este servidor (Audit-Server)
-    "172.31.20.28",     # La IP Privada de este servidor (Audit-Server)
-    "3.91.97.197",      # La IP Pública de Reportes
-    "172.31.17.51",     # IP Privada Reportes 1
-    "172.31.26.43",     # IP Privada Reportes 2
-    "172.31.18.237",    # IP Privada Reportes 3
-    "172.31.17.54",     # IP Privada Reportes 4
+    "3.80.36.86",       # IP Pública Audit-Server
+    "172.31.20.28",     # IP Privada Audit-Server
+    "3.91.97.197",      # IP Pública Reportes
+    "172.31.17.51", "172.31.26.43", "172.31.18.237", "172.31.17.54", # Privadas Reportes
 ]
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
+    "django.contrib.sessions", # <--- Asegúrate de tener esta
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     "manejador_logs", 
     "logs",
 ]
 
 MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
 ROOT_URLCONF = "manejador_logs.urls"
+
+# --- BLOQUE DE TEMPLATES (EL QUE NOS FALTABA) ---
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 
 DATABASES = {
     "default": {
@@ -44,14 +64,11 @@ DATABASES = {
     }
 }
 
-# --- CONFIGURACIÓN DE LOGS PARA AWS CLOUDWATCH ---
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
+        'console': { 'class': 'logging.StreamHandler' },
         'cloudwatch': {
             'level': 'INFO',
             'class': 'watchtower.CloudWatchLogHandler',
@@ -59,21 +76,13 @@ LOGGING = {
             'log_group': 'BITECO-Audit-Logs',
             'stream_name': 'audit-server-stream',
             'create_log_group': True,
-            'send_interval': 1,       # Envío casi instantáneo
-            'max_batch_count': 1,     # No esperar a acumular logs
+            'send_interval': 1,
+            'max_batch_count': 1,
         },
     },
     'loggers': {
-        'django': {
-            'handlers': ['console', 'cloudwatch'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'manejador_logs': {  # Asegúrate que este nombre coincida con tu app
-            'handlers': ['console', 'cloudwatch'],
-            'level': 'INFO',
-            'propagate': False,
-        },
+        'django': { 'handlers': ['console', 'cloudwatch'], 'level': 'INFO', 'propagate': True },
+        'logs': { 'handlers': ['console', 'cloudwatch'], 'level': 'INFO', 'propagate': False },
     },
 }
 
