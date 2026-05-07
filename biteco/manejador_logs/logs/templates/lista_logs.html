@@ -2,45 +2,68 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BITE.co | Panel de Auditoría</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; }
-        .table-container { margin-top: 50px; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .badge-service { background-color: #6c5ce7; color: white; }
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .dashboard-header { background: #2c3e50; color: white; padding: 2rem 0; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .card-table { background: white; border-radius: 12px; border: none; box-shadow: 0 8px 24px rgba(0,0,0,0.05); padding: 20px; }
+        .badge-service { background-color: #e67e22; color: white; font-weight: 500; }
+        .badge-role { background-color: #3498db; }
     </style>
 </head>
 <body>
-    <div class="container table-container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Historial de Integridad y Logs</h2>
-            <span class="badge bg-success">Sistema Activo</span>
-        </div>
-        
-        <table class="table table-hover">
-            <thead class="table-dark">
-                <tr>
-                    <th>Fecha (UTC)</th>
-                    <th>Usuario</th>
-                    <th>Servicio</th>
-                    <th>Acción Realizada</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in logs %}
-                <tr>
-                    <td class="text-muted">{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
-                    <td><strong>{{ log.user_id }}</strong> <small class="text-capitalize">({{ log.role|lower }})</small></td>
-                    <td><span class="badge badge-service">{{ log.service }}</span></td>
-                    <td>{{ log.action }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center">No hay registros de auditoría disponibles.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+<div class="dashboard-header text-center">
+    <div class="container">
+        <h1>Consola de Integridad BITE.co</h1>
+        <p class="lead mb-0">Visualización de Logs en Tiempo Real (RDS PostgreSQL)</p>
     </div>
+</div>
+
+<div class="container">
+    <div class="card card-table">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="m-0 text-secondary">Historial de Auditoría</h4>
+            <button onclick="location.reload()" class="btn btn-outline-primary btn-sm">🔄 Refrescar Datos</button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Timestamp (UTC)</th>
+                        <th>Identidad</th>
+                        <th>Origen</th>
+                        <th>Acción Registrada</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="text-muted" style="font-size: 0.9rem;">{{ log.created_at|date:"d/m/Y H:i:s" }}</td>
+                        <td>
+                            <span class="fw-bold">{{ log.user_id }}</span><br>
+                            <span class="badge badge-role" style="font-size: 0.7rem;">{{ log.role }}</span>
+                        </td>
+                        <td><span class="badge badge-service">{{ log.service|upper }}</span></td>
+                        <td class="text-dark">{{ log.action }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">No se encontraron logs en la base de datos.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <footer class="text-center mt-5 pb-4 text-muted">
+        <small>Arquitectura de Integridad - Proyecto BITE.co - 2026</small>
+    </footer>
+</div>
+
 </body>
 </html>

@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from django.shortcuts import render # <--- Nueva importación
 from .models import AuditLog
 import json
 
@@ -7,7 +8,6 @@ def registrar_log(request):
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    # Token interno (cámbialo luego por variable de entorno)
     internal_token = request.headers.get("X-Internal-Token")
     if internal_token != "super-secret":
         return JsonResponse({"error": "Forbidden"}, status=403)
@@ -22,9 +22,8 @@ def registrar_log(request):
             action=data.get("action")
         )
 
-        # Imprimir en consola cada log recibido
         print(f"[AUDIT LOG] {log.created_at} - {log.user_id} ({log.role}) - {log.service} -> {log.action}")
-        print(f"[RAW JSON] {json.dumps(data)}")  # Muestra el JSON completo recibido
+        print(f"[RAW JSON] {json.dumps(data)}")
 
         return JsonResponse({"message": "Log registrado"}, status=200)
 
@@ -32,20 +31,21 @@ def registrar_log(request):
         print(f"[AUDIT LOG ERROR] {e}")
         return JsonResponse({"error": str(e)}, status=500)
 
-
-# SOLO ADMIN PUEDE VER
 def listar_logs(request):
     if request.method != "GET":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    user_role = request.headers.get("X-User-Role", "USER")
+    # Permitimos ADMIN vía Header o vía URL (?role=ADMIN) para que lo veas en el navegador
+    user_role = request.headers.get("X-User-Role") or request.GET.get("role")
 
     if user_role != "ADMIN":
-        return JsonResponse({
-            "error": "Access Denied",
-            "message": "Solo ADMIN puede ver logs"
-        }, status=403)
+        return JsonResponse({"error": "Forbidden", "message": "Solo ADMIN puede ver logs"}, status=403)
 
-    logs = AuditLog.objects.all().order_by('-created_at').values()
+    logs_queryset = AuditLog.objects.all().order_by('-created_at')
 
-    return JsonResponse(list(logs), safe=False)
+    # Si entras desde el navegador, devolvemos el HTML
+    if 'text/html' in request.headers.get('Accept', ''):
+        return render(request, 'logs/lista_logs.html', {'logs': logs_queryset})
+
+    # Si es una app/petición técnica, devolvemos JSON
+    return JsonResponse(list(logs_queryset.values()), safe=False)
