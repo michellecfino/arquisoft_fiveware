@@ -8,7 +8,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY", "audit-secret-key-123")
 DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = ["3.90.190.188", "localhost", "127.0.0.1"]
+
+ALLOWED_HOSTS = [
+    "3.80.36.86",       # La IP Pública de este servidor (Audit-Server)
+    "172.31.20.28",     # La IP Privada de este servidor (Audit-Server)
+    "3.91.97.197",      # La IP Pública de Reportes (por si acaso)
+    "172.31.17.51",     # IP Privada Reportes 1
+    "172.31.26.43",     # IP Privada Reportes 2
+    "172.31.18.237",    # IP Privada Reportes 3
+    "172.31.17.54",     # IP Privada Reportes 4
+]
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
