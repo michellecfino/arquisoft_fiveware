@@ -45,7 +45,7 @@ def listar_logs(request):
 
     # Si entras desde el navegador, devolvemos el HTML
     if 'text/html' in request.headers.get('Accept', ''):
-        return render(request, 'templates/lista_logs.html', {'logs': logs_queryset})
+        return render(request, 'lista_logs.html', {'logs': logs_queryset})
 
     # Si es una app/petición técnica, devolvemos JSON
     return JsonResponse(list(logs_queryset.values()), safe=False)
