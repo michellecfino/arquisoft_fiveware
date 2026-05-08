@@ -11,7 +11,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "audit-secret-key-123")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
-    "3.80.36.86",       # IP Pública Audit-Server
+    "98.93.104.66",     # IP Pública Audit-Server
     "172.31.20.28",     # IP Privada Audit-Server
     "3.91.97.197",      # IP Pública Reportes
     "172.31.17.51", "172.31.26.43", "172.31.18.237", "172.31.17.54", # Privadas Reportes
