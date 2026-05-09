@@ -257,22 +257,6 @@ resource "aws_security_group" "services_sg" {
     self      = true
   }
 
-  # HACIA AUDIT
-  egress {
-    from_port       = 8002
-    to_port         = 8002
-    protocol        = "tcp"
-    security_groups = [aws_security_group.audit_sg.id]
-  }
-
-  # HACIA DB REPORTES
-  egress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.reportes_db_sg.id]
-  }
-
   tags = {
     Name = "services-sg"
   }
@@ -300,14 +284,6 @@ resource "aws_security_group" "audit_sg" {
     to_port         = 8002
     protocol        = "tcp"
     security_groups = [aws_security_group.api_sg.id]
-  }
-
-  # HACIA AUDIT DB
-  egress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.audit_db_sg.id]
   }
 
   tags = {
