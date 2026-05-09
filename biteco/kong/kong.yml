@@ -1,70 +1,64 @@
-_format_version: "3.0"
+_format_version: "2.1"
 
 services:
-
-  # =====================================================
-  # REPORTES
-  # =====================================================
-
   - name: reportes-service
-
     host: reportes_upstream
-    port: 8080
+    port: 8000
     protocol: http
-
     routes:
       - name: reportes-route
         paths:
           - /reportes
         strip_path: false
-
     plugins:
-      - name: jwt
-
-  # =====================================================
-  # AUDITORIA
-  # =====================================================
+      - name: openid-connect
+        enabled: true
+        config:
+          issuer: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_G7d7Hpkdz
+          client_id: "74mkqdaihucqdgs5u96bt2rvio"
+          client_secret: ""  # No necesitas secret para public client
+          redirect_uri: ["http://13.220.29.135:8000"]
+          response_type: ["code"]
+          scopes: ["openid", "email", "profile"]
+          login_action: "redirect"
+          authenticated_groups: ["user", "admin"]
 
   - name: audit-service
-
     host: audit_upstream
     port: 8002
     protocol: http
-
     routes:
       - name: audit-route
         paths:
           - /audit
+          - /audit/logs
         strip_path: false
-
     plugins:
-      - name: jwt
-
-# =====================================================
-# UPSTREAMS
-# =====================================================
+      - name: openid-connect
+        enabled: true
+        config:
+          issuer: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_G7d7Hpkdz
+          client_id: "74mkqdaihucqdgs5u96bt2rvio"
+          client_secret: ""
+          redirect_uri: ["http://13.220.29.135:8000"]
+          response_type: ["code"]
+          scopes: ["openid", "email", "profile"]
+          login_action: "redirect"
+          authenticated_groups: ["admin"]  # Solo admin puede ver logs
 
 upstreams:
-
-  # Cluster reportes
   - name: reportes_upstream
-
     targets:
-      - target: 10.0.2.95:8080
+      - target: 10.0.2.139:8000
+        weight: 100
+      - target: 10.0.2.123:8000
+        weight: 100
+      - target: 10.0.2.67:8000
+        weight: 100
+      - target: 10.0.2.156:8000
         weight: 100
 
-      - target: 10.0.2.68:8080
-        weight: 100
-
-      - target: 10.0.2.101:8080
-        weight: 100
-
-      - target: 10.0.2.179:8080
-        weight: 100
-
-  # Audit server
   - name: audit_upstream
-
     targets:
-      - target: 10.0.2.117:8002
+      - target: 10.0.2.215:8002
         weight: 100
