@@ -164,20 +164,6 @@ resource "aws_key_pair" "main" {
 }
 
 # =========================================================
-# PASSWORDS SEGURAS
-# =========================================================
-
-resource "random_password" "audit_db_password" {
-  length  = 20
-  special = true
-}
-
-resource "random_password" "reportes_db_password" {
-  length  = 20
-  special = true
-}
-
-# =========================================================
 # SECURITY GROUPS
 # =========================================================
 
@@ -470,7 +456,7 @@ resource "aws_db_instance" "audit_db" {
   allocated_storage = 20
 
   username = "postgres"
-  password = random_password.audit_db_password.result
+  password = "biteco12345"
 
   publicly_accessible = false
 
@@ -501,7 +487,7 @@ resource "aws_db_instance" "reportes_db" {
   allocated_storage = 20
 
   username = "postgres"
-  password = random_password.reportes_db_password.result
+  password = "biteco12345"
 
   db_name = "reportes"
 
