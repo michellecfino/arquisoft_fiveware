@@ -12,7 +12,7 @@ services:
           - /reportes
         strip_path: false
     plugins:
-      - name: oidc                     # ← Cambiado de openid-connect a oidc
+      - name: oidc
         enabled: true
         config:
           client_id: "74mkqdaihucqdgs5u96bt2rvio"
@@ -34,13 +34,13 @@ services:
           - /audit
         strip_path: false
     plugins:
-      - name: oidc                     # ← Cambiado también aquí
+      - name: oidc
         enabled: true
         config:
           client_id: "74mkqdaihucqdgs5u96bt2rvio"
           client_secret: ""
           discovery: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_G7d7Hpkdz/.well-known/openid-configuration"
-          redirect_uri: "https://13.220.29.135:8443/reportes"
+          redirect_uri: "https://13.220.29.135:8443/audit"
           scope: "openid email profile"
           ssl_verify: "no"
           bearer_only: "yes"
