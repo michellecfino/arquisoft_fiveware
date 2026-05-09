@@ -4,4 +4,5 @@ from . import views
 urlpatterns = [
     path("api/reportes/<int:id_proyecto>/<int:anio>/<int:mes>/", views.resumen_reporte_api, name="resumen_reporte_api"),
     path("reportes/<int:id_proyecto>/<int:anio>/<int:mes>/", views.resumen_reporte_vista, name="resumen_reporte_vista"),
+    path("reportes/", views.resumen_reporte_vista, name="reportes_base"),
 ]
