@@ -1,50 +1,70 @@
-_format_version: "2.1"
+_format_version: "3.0"
 
-# -----------------------------
-# CONSUMERS (usuarios y JWT)
-# -----------------------------
-consumers:
-  - username: admin
-    jwt_secrets:
-      - key: "https://biteco/api"
-        secret: "superclave_prueba_123456"
-        algorithm: HS256
-
-  - username: user
-    jwt_secrets:
-      - key: "https://biteco/api"
-        secret: "superclave_prueba_123456"
-        algorithm: HS256
-
-# -----------------------------
-# SERVICIOS (upstream Django reportes)
-# -----------------------------
 services:
-  - name: manejador-reportes
-    host: upstream-reportes
+
+  # =====================================================
+  # REPORTES
+  # =====================================================
+
+  - name: reportes-service
+
+    host: reportes_upstream
     port: 8080
     protocol: http
+
     routes:
       - name: reportes-route
         paths:
-          - /api/reportes
           - /reportes
         strip_path: false
+
     plugins:
       - name: jwt
-        config:
-          claims_to_verify:
-            - exp
-          key_claim_name: iss  # 'iss' del JWT será usado para buscar credenciales
 
-# -----------------------------
-# UPSTREAMS (balanceo simple)
-# -----------------------------
+  # =====================================================
+  # AUDITORIA
+  # =====================================================
+
+  - name: audit-service
+
+    host: audit_upstream
+    port: 8002
+    protocol: http
+
+    routes:
+      - name: audit-route
+        paths:
+          - /audit
+        strip_path: false
+
+    plugins:
+      - name: jwt
+
+# =====================================================
+# UPSTREAMS
+# =====================================================
+
 upstreams:
-  - name: upstream-reportes
-    algorithm: least-connections
+
+  # Cluster reportes
+  - name: reportes_upstream
+
     targets:
-      - target: 172.31.17.51:8080
-      - target: 172.31.26.43:8080
-      - target: 172.31.18.237:8080
-      - target: 172.31.17.54:8080
+      - target: 10.0.2.95:8080
+        weight: 100
+
+      - target: 10.0.2.68:8080
+        weight: 100
+
+      - target: 10.0.2.101:8080
+        weight: 100
+
+      - target: 10.0.2.179:8080
+        weight: 100
+
+  # Audit server
+  - name: audit_upstream
+
+    targets:
+      - target: 10.0.2.117:8002
+        weight: 100
