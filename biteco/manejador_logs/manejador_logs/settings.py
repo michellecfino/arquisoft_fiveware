@@ -10,12 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY", "audit-secret-key-123")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["54.83.17.153","52.54.68.52", "10.0.2.215","34.201.42.208",
-  "10.0.2.139",
-  "10.0.2.123",
-  "10.0.2.67",
-  "10.0.2.156",
-  ]
+ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
