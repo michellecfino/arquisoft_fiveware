@@ -1,9 +1,10 @@
 _format_version: "2.1"
 
 services:
+  # Servicio de Reportes
   - name: reportes-service
     host: reportes_upstream
-    port: 8000
+    port: 8080
     protocol: http
     routes:
       - name: reportes-route
@@ -11,18 +12,18 @@ services:
           - /reportes
         strip_path: false
     plugins:
-      - name: openid-connect
+      - name: oidc                     # ← Cambiado de openid-connect a oidc
         enabled: true
         config:
-          issuer: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_G7d7Hpkdz
           client_id: "74mkqdaihucqdgs5u96bt2rvio"
-          client_secret: ""  # No necesitas secret para public client
-          redirect_uri: ["http://13.220.29.135:8000"]
-          response_type: ["code"]
-          scopes: ["openid", "email", "profile"]
-          login_action: "redirect"
-          authenticated_groups: ["user", "admin"]
+          client_secret: ""
+          discovery: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_G7d7Hpkdz/.well-known/openid-configuration"
+          redirect_uri: "http://13.220.29.135:8000"
+          scope: "openid email profile"
+          ssl_verify: "no"
+          session_secret: "mi-secreto-super-seguro-12345"
 
+  # Servicio de Auditoría
   - name: audit-service
     host: audit_upstream
     port: 8002
@@ -31,31 +32,29 @@ services:
       - name: audit-route
         paths:
           - /audit
-          - /audit/logs
         strip_path: false
     plugins:
-      - name: openid-connect
+      - name: oidc                     # ← Cambiado también aquí
         enabled: true
         config:
-          issuer: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_G7d7Hpkdz
           client_id: "74mkqdaihucqdgs5u96bt2rvio"
           client_secret: ""
-          redirect_uri: ["http://13.220.29.135:8000"]
-          response_type: ["code"]
-          scopes: ["openid", "email", "profile"]
-          login_action: "redirect"
-          authenticated_groups: ["admin"]  # Solo admin puede ver logs
+          discovery: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_G7d7Hpkdz/.well-known/openid-configuration"
+          redirect_uri: "http://13.220.29.135:8000"
+          scope: "openid email profile"
+          ssl_verify: "no"
+          bearer_only: "yes"
 
 upstreams:
   - name: reportes_upstream
     targets:
-      - target: 10.0.2.139:8000
+      - target: 10.0.2.139:8080
         weight: 100
-      - target: 10.0.2.123:8000
+      - target: 10.0.2.123:8080
         weight: 100
-      - target: 10.0.2.67:8000
+      - target: 10.0.2.67:8080
         weight: 100
-      - target: 10.0.2.156:8000
+      - target: 10.0.2.156:8080
         weight: 100
 
   - name: audit_upstream
