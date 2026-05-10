@@ -50,8 +50,8 @@ logger = logging.getLogger("disponibilidad.heartbeat")
 HEARTBEAT_INTERVAL_SECONDS: float = 1.0
 
 #: Tiempo máximo de espera para la prueba de conexión (en segundos)
-#: Debe ser menor al statement_timeout de 200ms para evitar falsos positivos
-HEARTBEAT_PROBE_TIMEOUT_SECONDS: float = 0.15  # 150ms
+#: Debe ser menor al statement_timeout de 1000ms para evitar falsos positivos
+HEARTBEAT_PROBE_TIMEOUT_SECONDS: float = 0.30  # 300ms
 
 #: Llave de caché donde se almacena el estado de la DB
 DB_AVAILABLE_CACHE_KEY: str = "db_available"

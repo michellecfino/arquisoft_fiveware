@@ -81,25 +81,44 @@ TEMPLATES = [
 ]
 
 # ---------------------------------------------------------------------------
-# DATABASE — PostgreSQL con psycopg2
+# DATABASE — PostgreSQL (RDS) con fallback a SQLite local
 #
 # ===========================================================================
-# TÁCTICA 2: TIMEOUT
+# TÁCTICA 2: TIMEOUT (1000ms)
 # ===========================================================================
-# El parámetro 'options': '-c statement_timeout=200' en el diccionario OPTIONS
-# le indica a PostgreSQL que cancele CUALQUIER consulta que tarde más de 200ms.
-# Esto implementa la táctica de Timeout de Bass a nivel de base de datos.
-#
-# Cuando se excede el límite, PostgreSQL lanza:
-#   django.db.utils.OperationalError: canceling statement due to statement timeout
-# Este error es capturado en views.py para retornar la respuesta degradada.
+# statement_timeout=1000 → cualquier consulta que exceda 1s será cancelada
+# por PostgreSQL y capturada para degradación (ASR <= 400ms para respuesta final,
+# pero el timeout es la barrera de DB; la rama Heartbeat evita esperar ese segundo
+# cuando la DB ya está caída).
 # ===========================================================================
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+
+DB_HOST = config("DB_HOST", default="")
+DB_PORT = config("DB_PORT", default="5432")
+DB_NAME = config("DB_NAME", default="disponibilidad_db")
+DB_USER = config("DB_USER", default="dbadmin")
+DB_PASSWORD = config("DB_PASSWORD", default="12345678")
+
+if DB_HOST:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "HOST": DB_HOST,
+            "PORT": DB_PORT,
+            "NAME": DB_NAME,
+            "USER": DB_USER,
+            "PASSWORD": DB_PASSWORD,
+            "OPTIONS": {
+                "options": "-c statement_timeout=1000",
+            },
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # ---------------------------------------------------------------------------
 # CACHE — Redis (soporte para Táctica 1: Heartbeat)
@@ -116,10 +135,16 @@ DATABASES = {
 #   views.py:     lee  cache.get('db_available', default=True)
 # ===========================================================================
 
+REDIS_URL = config("REDIS_URL", default="redis://127.0.0.1:6379/1")
+
+# En EC2 usamos Redis local (instalado por user_data) para almacenar el heartbeat.
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "unique-snowflake",
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
     }
 }
 

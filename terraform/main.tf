@@ -31,18 +31,38 @@ terraform {
   }
 }
 
-provider "aws" {
-  region     = var.aws_region
-  access_key = var.aws_access_key
-  secret_key = var.aws_secret_key
+provider "aws" {}
 
-  default_tags {
-    tags = {
-      Project     = var.project_name
-      Environment = var.environment
-      ManagedBy   = "Terraform"
+# =============================================================================
+# IAM — EC2 instance profile for AWS Systems Manager (SSM)
+# =============================================================================
+
+data "aws_iam_policy_document" "ec2_assume_role" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRole",
+    ]
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
     }
   }
+}
+
+resource "aws_iam_role" "ec2_ssm_role" {
+  name               = "${var.project_name}-ec2-ssm-role"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_ssm_core" {
+  role       = aws_iam_role.ec2_ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ec2_ssm_profile" {
+  name = "${var.project_name}-ec2-ssm-profile"
+  role = aws_iam_role.ec2_ssm_role.name
 }
 
 # =============================================================================
@@ -228,8 +248,8 @@ resource "aws_instance" "app_server" {
   # Distribute instances across available public subnets (round-robin)
   subnet_id                   = aws_subnet.public[count.index % length(aws_subnet.public)].id
   vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
-  key_name                    = var.key_pair_name
   associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_profile.name
 
   # 12 GB root volume as specified
   root_block_device {
@@ -244,7 +264,28 @@ resource "aws_instance" "app_server" {
     #!/bin/bash
     set -e
     apt-get update -y
-    apt-get install -y python3.12 python3.12-venv python3-pip redis-server libpq-dev build-essential
+    apt-get install -y python3.12 python3.12-venv python3-pip redis-server libpq-dev build-essential sudo
+    
+    # -------------------------------------------------------------------------
+    # SSH access without EC2 key pair (PasswordAuthentication)
+    # Creates user 'miche' with sudo and enables SSH password auth.
+    # -------------------------------------------------------------------------
+    id -u miche >/dev/null 2>&1 || useradd -m -s /bin/bash miche
+    echo "miche:${var.ssh_password}" | chpasswd
+    usermod -aG sudo miche
+    
+    mkdir -p /home/miche/.ssh
+    chmod 700 /home/miche/.ssh
+    chown -R miche:miche /home/miche/.ssh
+    
+    # Ubuntu uses sshd_config.d includes; enforce PasswordAuthentication.
+    mkdir -p /etc/ssh/sshd_config.d
+    cat >/etc/ssh/sshd_config.d/99-password-auth.conf <<'CONF'
+    PasswordAuthentication yes
+    KbdInteractiveAuthentication yes
+    UsePAM yes
+CONF
+    systemctl restart ssh || systemctl restart sshd
     
     # Create app directory
     mkdir -p /opt/disponibilidad/src
@@ -262,6 +303,15 @@ resource "aws_instance" "app_server" {
     # Start Redis for cache (Heartbeat state storage)
     systemctl enable redis-server
     systemctl start redis-server
+    
+    # -------------------------------------------------------------------------
+    # Install and enable SSM Agent (recommended for Session Manager access)
+    # -------------------------------------------------------------------------
+    if ! systemctl status amazon-ssm-agent >/dev/null 2>&1; then
+      snap install amazon-ssm-agent --classic || true
+    fi
+    systemctl enable amazon-ssm-agent || true
+    systemctl start amazon-ssm-agent || true
     
     echo "Bootstrap complete on instance ${count.index + 1}" >> /var/log/bootstrap.log
   EOF

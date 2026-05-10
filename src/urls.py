@@ -11,6 +11,11 @@ urlpatterns = [
     # Endpoint principal del ASR: obtiene el reporte de un proyecto
     # Táctica 3 (Degradation) actúa aquí si la DB no está disponible
     path(
+        "api/reports/",
+        ProjectReportView.as_view(),
+        name="project-report-default",
+    ),
+    path(
         "api/reports/<int:project_id>/",
         ProjectReportView.as_view(),
         name="project-report",

@@ -4,24 +4,6 @@
 # Tácticas de Bass: (soporte de infraestructura para las tácticas de disponibilidad)
 # =============================================================================
 
-variable "aws_region" {
-  description = "AWS region where all resources will be deployed"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "aws_access_key" {
-  description = "AWS Access Key ID (preferibly injected via environment variables or secrets manager)"
-  type        = string
-  sensitive   = true
-}
-
-variable "aws_secret_key" {
-  description = "AWS Secret Access Key (preferibly injected via environment variables or secrets manager)"
-  type        = string
-  sensitive   = true
-}
-
 variable "project_name" {
   description = "Project name used as prefix for all resources"
   type        = string
@@ -72,9 +54,17 @@ variable "rds_username" {
 }
 
 variable "rds_password" {
-  description = "Master password for the RDS instance (store in secrets manager in production)"
+  description = "Master password for the RDS instance"
   type        = string
   sensitive   = true
+  default     = "12345678"
+}
+
+variable "ssh_password" {
+  description = "Password for the 'miche' user on EC2 instances (SSH PasswordAuthentication)."
+  type        = string
+  sensitive   = true
+  default     = "12345678"
 }
 
 variable "ubuntu_ami" {
@@ -82,12 +72,6 @@ variable "ubuntu_ami" {
   type        = string
   # Ubuntu 24.04 LTS (Noble Numbat) official AMI for us-east-1
   default     = "ami-0e86e20dae9224db8"
-}
-
-variable "key_pair_name" {
-  description = "Name of the EC2 Key Pair for SSH access to instances"
-  type        = string
-  default     = "disponibilidad-key"
 }
 
 variable "vpc_cidr" {

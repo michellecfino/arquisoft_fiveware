@@ -62,7 +62,7 @@ logger = logging.getLogger("disponibilidad.views")
 # ---------------------------------------------------------------------------
 
 #: Mensaje de usuario final para el escenario de falla (definido en el ASR)
-GRACEFUL_FAILURE_MESSAGE = "No pudimos obtener tus datos, por favor reintenta"
+GRACEFUL_FAILURE_MESSAGE = "Servicio temporalmente no disponible, por favor reintente"
 
 #: Status string para identificar respuestas degradadas en los logs/tests
 STATUS_SUCCESS = "success"
@@ -92,7 +92,7 @@ class ProjectReportView(View):
     URL: GET /api/reports/<project_id>/
     """
 
-    def get(self, request, project_id: int):
+    def get(self, request, project_id: int | None = None):
         """
         Maneja la solicitud HTTP GET para obtener el reporte de un proyecto.
 
@@ -100,6 +100,12 @@ class ProjectReportView(View):
           - Ruta feliz: < 100ms (consulta normal)
           - Ruta de falla: < 400ms (detección + respuesta degradada)
         """
+        if project_id is None:
+            try:
+                project_id = int(request.GET.get("project_id", "1"))
+            except ValueError:
+                project_id = 1
+
         request_start = time.monotonic()
         logger.info("Request recibido: GET /api/reports/%d/", project_id)
 
@@ -123,20 +129,20 @@ class ProjectReportView(View):
                 elapsed,
             )
             # TÁCTICA 3: DEGRADATION — fallo detectado por Heartbeat
-            if self._prefers_html(request):
-                return render(
-                    request,
-                    "error_degradacion.html",
-                    {
-                        "project_id": project_id,
-                        "response_time_ms": round(elapsed, 2),
-                    },
-                    status=200,
+            if self._prefers_json(request):
+                return self._graceful_failure_response(
+                    project_id=project_id,
+                    elapsed_ms=elapsed,
+                    reason="heartbeat",
                 )
-            return self._graceful_failure_response(
-                project_id=project_id,
-                elapsed_ms=elapsed,
-                reason="heartbeat",
+            return render(
+                request,
+                "error_degradacion.html",
+                {
+                    "project_id": project_id,
+                    "response_time_ms": round(elapsed, 2),
+                },
+                status=200,
             )
 
         # ------------------------------------------------------------------
@@ -157,7 +163,7 @@ class ProjectReportView(View):
             )
 
             # Respuesta exitosa: HTML para browser, JSON para clientes API
-            if self._prefers_html(request):
+            if not self._prefers_json(request):
                 return render(
                     request,
                     "project_report.html",
@@ -195,7 +201,7 @@ class ProjectReportView(View):
                 elapsed,
                 svc_err,
             )
-            if self._prefers_html(request):
+            if not self._prefers_json(request):
                 return render(
                     request,
                     "error_degradacion.html",
@@ -220,7 +226,7 @@ class ProjectReportView(View):
                 elapsed,
                 unexpected_err,
             )
-            if self._prefers_html(request):
+            if not self._prefers_json(request):
                 return render(
                     request,
                     "error_degradacion.html",
@@ -237,23 +243,21 @@ class ProjectReportView(View):
             )
 
     # ------------------------------------------------------------------
-    # Negociación HTML / JSON
+    # Negociación HTML / JSON (front-first: por defecto HTML)
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _prefers_html(request) -> bool:
+    def _prefers_json(request) -> bool:
         """
-        True si conviene servir HTML (navegador). Los clientes API suelen omitir
-        ``text/html`` en ``Accept`` o pasan ``?format=json``.
+        True si conviene servir JSON (curl/Postman). Por defecto servimos HTML
+        para priorizar display en browser y cumplir el ASR con degradación en HTML.
         """
         if request.GET.get("format") == "json":
-            return False
-        if request.GET.get("format") == "html":
             return True
-        accept = (request.headers.get("Accept") or "").lower()
-        if "application/json" in accept:
+        if request.GET.get("format") == "html":
             return False
-        return "text/html" in accept
+        accept = (request.headers.get("Accept") or "").lower()
+        return "application/json" in accept
 
     # ------------------------------------------------------------------
     # TÁCTICA 3: Helper de respuesta degradada
