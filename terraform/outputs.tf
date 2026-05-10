@@ -64,6 +64,15 @@ output "ec2_security_group_id" {
 }
 
 # -------------------------------------------------------
+# Load Balancer
+# -------------------------------------------------------
+
+output "alb_dns_name" {
+  description = "Public DNS of the ALB (HTTP :80) -> Kong :8000 on each instance"
+  value       = aws_lb.main.dns_name
+}
+
+# -------------------------------------------------------
 # Network Outputs
 # -------------------------------------------------------
 

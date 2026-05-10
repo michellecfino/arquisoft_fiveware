@@ -1,0 +1,17 @@
+_format_version: "3.0"
+_transform: false
+
+# ALB -> Kong (proxy :8000) -> Django (service web :8000)
+
+services:
+  - name: disponibilidad-web
+    url: http://web:8000
+    connect_timeout: 500
+    write_timeout: 5000
+    read_timeout: 5000
+    retries: 0
+    routes:
+      - name: catch-all
+        paths:
+          - /
+        strip_path: false

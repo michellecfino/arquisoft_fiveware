@@ -2,8 +2,8 @@
 settings.py — Configuración principal de Django para el experimento de Disponibilidad ASR.
 
 Tácticas de Bass implementadas aquí:
-  - Táctica 2 (Timeout): OPTIONS de psycopg2 con 'options': '-c statement_timeout=200'
-    fuerza un timeout estricto de 200ms en TODAS las consultas a la DB.
+  - Táctica 2 (Timeout): OPTIONS de psycopg2 con 'options': '-c statement_timeout=1000'
+    fuerza un timeout de 1000ms en las consultas PostgreSQL.
   - Táctica 1 (Heartbeat): CACHES configurado con Redis como backend para almacenar
     el estado 'db_available' verificado periódicamente por heartbeat.py.
 """
@@ -29,6 +29,9 @@ ALLOWED_HOSTS = config(
     default="*",
     cast=lambda v: [s.strip() for s in v.split(",")],
 )
+
+# Detrás de Kong / ALB (HTTP)
+USE_X_FORWARDED_HOST = config("USE_X_FORWARDED_HOST", default=True, cast=bool)
 
 # ---------------------------------------------------------------------------
 # INSTALLED APPS

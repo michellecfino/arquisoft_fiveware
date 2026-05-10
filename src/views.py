@@ -313,14 +313,17 @@ class HealthCheckView(View):
 
     def get(self, request):
         db_available = cache.get(DB_AVAILABLE_CACHE_KEY, default=None)
-        status_code = 200 if db_available else 503
+        body = {
+            "service": "disponibilidad-asr",
+            "healthy": db_available is True,
+            "db_available": db_available,
+            "heartbeat_key": DB_AVAILABLE_CACHE_KEY,
+        }
+        strict = request.GET.get("strict") == "1"
+        if strict:
+            status_code = 200 if db_available is True else 503
+        else:
+            # ALB + Kong: estado 200 aun si la RDS falla la app degradada sigue sirviendo
+            status_code = 200
 
-        return JsonResponse(
-            {
-                "service": "disponibilidad-asr",
-                "healthy": db_available is True,
-                "db_available": db_available,
-                "heartbeat_key": DB_AVAILABLE_CACHE_KEY,
-            },
-            status=status_code,
-        )
+        return JsonResponse(body, status=status_code)

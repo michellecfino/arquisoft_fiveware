@@ -32,6 +32,14 @@ class SrcConfig(AppConfig):
         import os
         import sys
 
+        # En Docker Compose el heartbeat corre en el servicio dedicado heartbeat
+        if os.environ.get("HEARTBEAT_DISABLED") == "1":
+            return
+
+        # python -m src.heartbeat levanta su propio proceso (no duplicar aquí)
+        if os.environ.get("RUN_HEARTBEAT_MAIN") == "1":
+            return
+
         # Evitar doble inicio en el reloader de Django (RUN_MAIN env var)
         # y en comandos de gestión que no necesitan el heartbeat
         is_management_command = (

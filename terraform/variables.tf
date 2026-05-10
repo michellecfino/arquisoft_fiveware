@@ -4,6 +4,12 @@
 # Tácticas de Bass: (soporte de infraestructura para las tácticas de disponibilidad)
 # =============================================================================
 
+variable "app_git_repo" {
+  description = "Git repository cloned on EC2 (must include Dockerfile, docker-compose.yml, kong.yaml)"
+  type        = string
+  default     = "https://github.com/michellecfino/disponibilidad.git"
+}
+
 variable "project_name" {
   description = "Project name used as prefix for all resources"
   type        = string

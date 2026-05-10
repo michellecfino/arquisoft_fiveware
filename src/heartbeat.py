@@ -50,7 +50,7 @@ logger = logging.getLogger("disponibilidad.heartbeat")
 HEARTBEAT_INTERVAL_SECONDS: float = 1.0
 
 #: Tiempo máximo de espera para la prueba de conexión (en segundos)
-#: Debe ser menor al statement_timeout de 1000ms para evitar falsos positivos
+#: Debe ser bastante menor que el statement_timeout de 1000ms de la app
 HEARTBEAT_PROBE_TIMEOUT_SECONDS: float = 0.30  # 300ms
 
 #: Llave de caché donde se almacena el estado de la DB
@@ -183,6 +183,7 @@ if __name__ == "__main__":
     import os
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "src.settings")
+    os.environ["RUN_HEARTBEAT_MAIN"] = "1"
     django.setup()
 
     service = HeartbeatService()
