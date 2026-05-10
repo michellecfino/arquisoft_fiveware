@@ -34,38 +34,6 @@ terraform {
 provider "aws" {}
 
 # =============================================================================
-# IAM — EC2 instance profile for AWS Systems Manager (SSM)
-# =============================================================================
-
-data "aws_iam_policy_document" "ec2_assume_role" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "sts:AssumeRole",
-    ]
-    principals {
-      type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role" "ec2_ssm_role" {
-  name               = "${var.project_name}-ec2-ssm-role"
-  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
-}
-
-resource "aws_iam_role_policy_attachment" "ec2_ssm_core" {
-  role       = aws_iam_role.ec2_ssm_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-resource "aws_iam_instance_profile" "ec2_ssm_profile" {
-  name = "${var.project_name}-ec2-ssm-profile"
-  role = aws_iam_role.ec2_ssm_role.name
-}
-
-# =============================================================================
 # DATA SOURCES
 # =============================================================================
 
@@ -209,7 +177,7 @@ resource "aws_security_group" "ec2_sg" {
 # -------------------------------------------------------
 resource "aws_security_group" "rds_sg" {
   name        = "${var.project_name}-rds-sg"
-  description = "Security group for RDS PostgreSQL — only EC2 instances can connect"
+  description = "RDS security group"
   vpc_id      = aws_vpc.main.id
 
   # PostgreSQL — only accessible from EC2 instances
@@ -249,7 +217,6 @@ resource "aws_instance" "app_server" {
   subnet_id                   = aws_subnet.public[count.index % length(aws_subnet.public)].id
   vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
   associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_profile.name
 
   # 12 GB root volume as specified
   root_block_device {
