@@ -1,6 +1,6 @@
 # =============================================================================
-# main.tf — VPC, ALB -> Kong (8000) -> Django, 4x EC2, RDS PostgreSQL 14
-# Sin IAM / sin key pair. SSH por contraseña (usuario miche).
+# main.tf — VPC, Kong (8000) -> Django, 4x EC2, RDS PostgreSQL 14
+# Sin Load Balancer (Acceso directo a Kong)
 # =============================================================================
 
 terraform {
@@ -90,43 +90,18 @@ resource "aws_route_table_association" "public" {
 # Security groups
 # -----------------------------------------------------------------------------
 
-resource "aws_security_group" "alb_sg" {
-  name        = "${var.project_name}-alb-sg"
-  description = "ALB security group"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description = "HTTP from internet"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "All outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${var.project_name}-alb-sg"
-  }
-}
-
 resource "aws_security_group" "ec2_sg" {
   name        = "${var.project_name}-ec2-sg"
-  description = "EC2 application and Kong ports"
+  description = "EC2 application and Kong ports - Direct Access"
   vpc_id      = aws_vpc.main.id
 
+  # Acceso a Kong desde Internet (Ya no depende del ALB)
   ingress {
-    description     = "Kong proxy and admin ports from ALB"
-    from_port       = 8000
-    to_port         = 8002
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
+    description = "Kong proxy port from internet"
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
@@ -177,60 +152,6 @@ resource "aws_security_group" "rds_sg" {
 }
 
 # -----------------------------------------------------------------------------
-# Application Load Balancer -> Kong :8000
-# -----------------------------------------------------------------------------
-
-resource "aws_lb" "main" {
-  name               = "${var.project_name}-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb_sg.id]
-  subnets            = aws_subnet.public[*].id
-
-  tags = {
-    Name = "${var.project_name}-alb"
-  }
-}
-
-resource "aws_lb_target_group" "kong" {
-  name_prefix = "kong-"
-  port        = 8000
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-
-  health_check {
-    enabled             = true
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-    protocol            = "HTTP"
-    path                = "/health/"
-    matcher             = "200"
-  }
-
-  deregistration_delay = 30
-}
-
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.kong.arn
-  }
-}
-
-resource "aws_lb_target_group_attachment" "kong_targets" {
-  count            = length(aws_instance.app_server)
-  target_group_arn = aws_lb_target_group.kong.arn
-  target_id        = aws_instance.app_server[count.index].id
-  port             = 8000
-}
-
-# -----------------------------------------------------------------------------
 # RDS PostgreSQL 14
 # -----------------------------------------------------------------------------
 
@@ -263,12 +184,7 @@ resource "aws_db_instance" "postgres" {
   multi_az            = false
   publicly_accessible = false
 
-  backup_retention_period = 7
-  backup_window           = "03:00-04:00"
-  maintenance_window      = "Mon:04:00-Mon:05:00"
-
-  skip_final_snapshot       = false
-  final_snapshot_identifier = "${var.project_name}-final-snapshot"
+  skip_final_snapshot       = true # Cambiado a true para facilitar pruebas
   deletion_protection       = false
 
   tags = {
@@ -278,7 +194,7 @@ resource "aws_db_instance" "postgres" {
 }
 
 # -----------------------------------------------------------------------------
-# EC2 — Docker, Kong, docker-compose (plantilla install_app.sh.tpl)
+# EC2 — Docker, Kong, docker-compose
 # -----------------------------------------------------------------------------
 
 resource "aws_instance" "app_server" {
