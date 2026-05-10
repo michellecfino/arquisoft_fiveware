@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
-    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="AWS Degradation HTML Test" enabled="true">
-      <stringProp name="TestPlan.comments">10 users hit /api/reports/1/ and assert HTML contains &lt;html&gt;</stringProp>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="AWS Degradation HTML Test (ALB)" enabled="true">
+      <stringProp name="TestPlan.comments">10 users via ALB:80 -> Kong -> /api/reports/. Pass DNS: jmeter -n -t test_plan_aws.jmx -JALB_DNS=your-alb.region.elb.amazonaws.com</stringProp>
       <boolProp name="TestPlan.functional_mode">false</boolProp>
       <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
       <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
       <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
         <collectionProp name="Arguments.arguments">
-          <elementProp name="SERVER_IP" elementType="Argument">
-            <stringProp name="Argument.name">SERVER_IP</stringProp>
-            <stringProp name="Argument.value">${SERVER_IP}</stringProp>
+          <elementProp name="ALB_DNS" elementType="Argument">
+            <stringProp name="Argument.name">ALB_DNS</stringProp>
+            <stringProp name="Argument.value">${__P(ALB_DNS,)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
-          <elementProp name="SERVER_PORT" elementType="Argument">
-            <stringProp name="Argument.name">SERVER_PORT</stringProp>
-            <stringProp name="Argument.value">8000</stringProp>
+          <elementProp name="ALB_PORT" elementType="Argument">
+            <stringProp name="Argument.name">ALB_PORT</stringProp>
+            <stringProp name="Argument.value">${__P(ALB_PORT,80)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
         </collectionProp>
@@ -40,8 +40,8 @@
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
             <collectionProp name="Arguments.arguments"/>
           </elementProp>
-          <stringProp name="HTTPSampler.domain">${SERVER_IP}</stringProp>
-          <stringProp name="HTTPSampler.port">${SERVER_PORT}</stringProp>
+          <stringProp name="HTTPSampler.domain">${ALB_DNS}</stringProp>
+          <stringProp name="HTTPSampler.port">${ALB_PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.contentEncoding"></stringProp>
           <stringProp name="HTTPSampler.path"></stringProp>
@@ -91,4 +91,3 @@
     </hashTree>
   </hashTree>
 </jmeterTestPlan>
-

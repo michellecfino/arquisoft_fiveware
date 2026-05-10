@@ -129,6 +129,22 @@ curl http://localhost:8000/api/reports/1/
 
 ### 4. Pruebas de carga (JMeter)
 
+**Plan contra el ALB (degradación HTML, puerto 80)**
+
+Tras `terraform apply`, usa el output `alb_dns_name` (solo el hostname, sin `http://`). Desde la raíz del proyecto:
+
+```bash
+jmeter -n -t test_plan_aws.jmx -l results/aws_alb.jtl -JALB_DNS=disponibilidad-asr-alb-1234567890.us-east-1.elb.amazonaws.com
+```
+
+El puerto por defecto es **80** (listener HTTP del ALB). Para fijarlo explícitamente:
+
+```bash
+jmeter -n -t test_plan_aws.jmx -l results/aws_alb.jtl -JALB_DNS=<DNS_DEL_ALB> -JALB_PORT=80
+```
+
+**Plan legacy (instancia directa)**
+
 ```bash
 jmeter -n -t tests/availability_test.jmx \
        -l results/results.jtl \
