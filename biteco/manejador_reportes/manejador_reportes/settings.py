@@ -1,14 +1,11 @@
 from pathlib import Path
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-key")
-DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = ["*"] if os.getenv("ALLOWED_HOSTS", "*") == "*" else os.getenv("ALLOWED_HOSTS").split(",")
+SECRET_KEY = "dev-manejador-reportes"
+DEBUG = True
+ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -51,12 +48,12 @@ WSGI_APPLICATION = "manejador_reportes.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": "biteco",
+        "USER": "postgres",
+        "PASSWORD": "postgres123",
+        "HOST": "rds-postgresql-latencia.coemlypc6xbn.us-east-1.rds.amazonaws.com",
+        "PORT": "5432",
     }
 }
 
@@ -66,4 +63,4 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"(venv)
