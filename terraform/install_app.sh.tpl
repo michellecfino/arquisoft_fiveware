@@ -60,4 +60,32 @@ cd "$${APP_DIR}"
 docker compose build --pull
 docker compose up -d
 
+# -----------------------------------------------------------------------------
+# Seeding de la Base de Datos (Post-Despliegue)
+# -----------------------------------------------------------------------------
+echo "Iniciando seeding de base de datos..."
+
+apt-get install -y postgresql-client
+
+# Guardar el contenido del script de seeding pasado por Terraform
+cat > /tmp/seed_db.sql << 'EOF'
+${seed_sql}
+EOF
+
+# Descargar certificado SSL de RDS
+curl -sLO https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+
+# Intentar seeding con reintentos para asegurar que RDS acepte conexiones
+export PGPASSWORD="${db_password}"
+for i in {1..10}; do
+  echo "Intento de seeding $i/10..."
+  if psql -h "${db_host}" -U "${db_user}" -d "${db_name}" -f /tmp/seed_db.sql; then
+    echo "Seeding completado exitosamente."
+    break
+  else
+    echo "RDS no listo, esperando 10 segundos..."
+    sleep 10
+  fi
+done
+
 echo "Bootstrap finished" >> /var/log/disponibilidad-bootstrap.log

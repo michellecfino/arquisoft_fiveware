@@ -229,6 +229,7 @@ resource "aws_instance" "app_server" {
     db_name      = var.rds_db_name
     db_user      = var.rds_username
     db_password  = var.rds_password
+    seed_sql     = file("${path.module}/seed_db.sql")
   })
 
   tags = {
