@@ -24,15 +24,15 @@ def registrar_log(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 def listar_logs(request):
-    # Soporte para ver en navegador con ?role=ADMIN
-    user_role = request.headers.get("X-User-Role") or request.GET.get("role")
+    # Ahora usamos el header de email que Kong envía
+    user_email = request.headers.get("X-User-Email")
 
-    if user_role != "ADMIN":
+    # Validamos directamente por el email del administrador
+    if user_email != "admin@biteco.com":
         return JsonResponse({"error": "Access Denied"}, status=403)
 
     logs_queryset = AuditLog.objects.all().order_by('-created_at')
 
-    # Si el navegador pide HTML, renderizamos la tabla
     if 'text/html' in request.headers.get('Accept', ''):
         return render(request, 'lista_logs.html', {'logs': logs_queryset})
 
