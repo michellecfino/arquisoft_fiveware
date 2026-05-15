@@ -1,144 +1,148 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
-    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Confidencialidad BITECO">
-      <stringProp name="TestPlan.comments">5000 autorizados + 5000 no autorizados - Thread Groups separados</stringProp>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan"
+              testname="Confidencialidad BITECO">
+      <stringProp name="TestPlan.comments">5000 autorizados + 5000 no autorizados con JWT</stringProp>
       <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
-      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments">
+      <boolProp name="TestPlan.serialize_threadgroups">true</boolProp>
+      <elementProp name="TestPlan.user_defined_variables"
+                   elementType="Arguments"
+                   guiclass="ArgumentsPanel"
+                   testclass="Arguments">
         <collectionProp name="Arguments.arguments">
           <elementProp name="HOST" elementType="Argument">
             <stringProp name="Argument.name">HOST</stringProp>
-            <stringProp name="Argument.value">34.226.209.251</stringProp>
-            <stringProp name="Argument.metadata">=</stringProp>
+            <stringProp name="Argument.value">54.221.149.78</stringProp>
           </elementProp>
           <elementProp name="PORT" elementType="Argument">
             <stringProp name="Argument.name">PORT</stringProp>
             <stringProp name="Argument.value">8000</stringProp>
-            <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
         </collectionProp>
       </elementProp>
     </TestPlan>
     <hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Usuarios Autorizados">
-        <intProp name="ThreadGroup.num_threads">2000</intProp>
-        <intProp name="ThreadGroup.ramp_time">60</intProp>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <!-- GRUPO 1: USUARIOS AUTORIZADOS               -->
+      <!-- ═══════════════════════════════════════════ -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
+                   testname="Usuarios Autorizados">
+        <intProp name="ThreadGroup.num_threads">5000</intProp>
+        <intProp name="ThreadGroup.ramp_time">120</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
-        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
           <stringProp name="LoopController.loops">1</stringProp>
           <boolProp name="LoopController.continue_forever">false</boolProp>
         </elementProp>
       </ThreadGroup>
       <hashTree>
-        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Autorizados">
-          <stringProp name="filename">C:/Users/lssg0/OneDrive/Documentos/Uniandes/IQUI_DISC/Semestre X/Arquitectura de Software/arquisoft_fiveware/biteco/jmeter/data/autorizados_2000.csv</stringProp>
-          <stringProp name="variableNames">tipo,id_proyecto,anio,mes,user_id,empresa_id</stringProp>
+
+        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet"
+                    testname="CSV Autorizados">
+          <stringProp name="filename">C:\Users\lssg0\OneDrive\Documentos\Uniandes\IQUI_DISC\Semestre X\Arquitectura de Software\arquisoft_fiveware\biteco\jmeter\data\autorizados.csv</stringProp>
+          <stringProp name="variableNames">tipo,id_proyecto,anio,mes,user_id,empresa_id,token</stringProp>
           <boolProp name="ignoreFirstLine">true</boolProp>
           <stringProp name="delimiter">,</stringProp>
           <boolProp name="recycle">false</boolProp>
           <boolProp name="stopThread">true</boolProp>
           <stringProp name="shareMode">shareMode.group</stringProp>
-          <stringProp name="fileEncoding"></stringProp>
-          <boolProp name="quotedData">false</boolProp>
         </CSVDataSet>
         <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET Reporte Autorizado">
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui"
+                          testclass="HTTPSamplerProxy"
+                          testname="GET Reporte Autorizado">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.path">/api/reportes/${id_proyecto}/${anio}/${mes}/</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
-          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
-          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
-            <collectionProp name="Arguments.arguments"/>
-          </elementProp>
           <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Headers Autorizados">
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager"
+                         testname="Headers Autorizados">
             <collectionProp name="HeaderManager.headers">
               <elementProp name="" elementType="Header">
                 <stringProp name="Header.name">Content-Type</stringProp>
                 <stringProp name="Header.value">application/json</stringProp>
               </elementProp>
               <elementProp name="" elementType="Header">
-                <stringProp name="Header.name">X-User</stringProp>
-                <stringProp name="Header.value">${user_id}</stringProp>
-              </elementProp>
-              <elementProp name="" elementType="Header">
-                <stringProp name="Header.name">X-Empresa-Id</stringProp>
-                <stringProp name="Header.value">${empresa_id}</stringProp>
-              </elementProp>
-              <elementProp name="" elementType="Header">
-                <stringProp name="Header.name">X-Role</stringProp>
-                <stringProp name="Header.value">user</stringProp>
+                <stringProp name="Header.name">Authorization</stringProp>
+                <stringProp name="Header.value">Bearer ${token}</stringProp>
               </elementProp>
             </collectionProp>
           </HeaderManager>
           <hashTree/>
         </hashTree>
+
       </hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Usuarios No Autorizados">
-        <intProp name="ThreadGroup.num_threads">2000</intProp>
-        <intProp name="ThreadGroup.ramp_time">60</intProp>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <!-- GRUPO 2: USUARIOS NO AUTORIZADOS            -->
+      <!-- ═══════════════════════════════════════════ -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
+                   testname="Usuarios No Autorizados">
+        <intProp name="ThreadGroup.num_threads">5000</intProp>
+        <intProp name="ThreadGroup.ramp_time">120</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
-        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
           <stringProp name="LoopController.loops">1</stringProp>
           <boolProp name="LoopController.continue_forever">false</boolProp>
         </elementProp>
       </ThreadGroup>
       <hashTree>
-        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV No Autorizados">
-          <stringProp name="filename">C:/Users/lssg0/OneDrive/Documentos/Uniandes/IQUI_DISC/Semestre X/Arquitectura de Software/arquisoft_fiveware/biteco/jmeter/data/no_autorizados_2000.csv</stringProp>
-          <stringProp name="variableNames">tipo,id_proyecto,anio,mes,user_id,empresa_id</stringProp>
+
+        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet"
+                    testname="CSV No Autorizados">
+          <stringProp name="filename">C:\Users\lssg0\OneDrive\Documentos\Uniandes\IQUI_DISC\Semestre X\Arquitectura de Software\arquisoft_fiveware\biteco\jmeter\data\no_autorizados.csv</stringProp>
+          <stringProp name="variableNames">tipo,id_proyecto,anio,mes,user_id,empresa_id,token</stringProp>
           <boolProp name="ignoreFirstLine">true</boolProp>
           <stringProp name="delimiter">,</stringProp>
           <boolProp name="recycle">false</boolProp>
           <boolProp name="stopThread">true</boolProp>
           <stringProp name="shareMode">shareMode.group</stringProp>
-          <stringProp name="fileEncoding"></stringProp>
-          <boolProp name="quotedData">false</boolProp>
         </CSVDataSet>
         <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET Reporte No Autorizado">
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui"
+                          testclass="HTTPSamplerProxy"
+                          testname="GET Reporte No Autorizado">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.path">/api/reportes/${id_proyecto}/${anio}/${mes}/</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
-          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
-          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
-            <collectionProp name="Arguments.arguments"/>
-          </elementProp>
           <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Headers No Autorizados">
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager"
+                         testname="Headers No Autorizados">
             <collectionProp name="HeaderManager.headers">
               <elementProp name="" elementType="Header">
                 <stringProp name="Header.name">Content-Type</stringProp>
                 <stringProp name="Header.value">application/json</stringProp>
               </elementProp>
               <elementProp name="" elementType="Header">
-                <stringProp name="Header.name">X-User</stringProp>
-                <stringProp name="Header.value">${user_id}</stringProp>
-              </elementProp>
-              <elementProp name="" elementType="Header">
-                <stringProp name="Header.name">X-Empresa-Id</stringProp>
-                <stringProp name="Header.value">${empresa_id}</stringProp>
-              </elementProp>
-              <elementProp name="" elementType="Header">
-                <stringProp name="Header.name">X-Role</stringProp>
-                <stringProp name="Header.value">user</stringProp>
+                <stringProp name="Header.name">Authorization</stringProp>
+                <stringProp name="Header.value">Bearer ${token}</stringProp>
               </elementProp>
             </collectionProp>
           </HeaderManager>
           <hashTree/>
         </hashTree>
+
       </hashTree>
-      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report">
+
+      <!-- ═══════════════════════════════════════════ -->
+      <!-- REPORTE GLOBAL                              -->
+      <!-- ═══════════════════════════════════════════ -->
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector"
+                       testname="Summary Report">
         <boolProp name="ResultCollector.error_logging">false</boolProp>
         <objProp>
           <name>saveConfig</name>
@@ -151,26 +155,15 @@
             <code>true</code>
             <message>true</message>
             <threadName>true</threadName>
-            <dataType>false</dataType>
-            <encoding>false</encoding>
-            <assertions>false</assertions>
-            <subresults>false</subresults>
-            <responseData>false</responseData>
-            <samplerData>false</samplerData>
-            <xml>false</xml>
-            <fieldNames>true</fieldNames>
-            <responseHeaders>false</responseHeaders>
-            <requestHeaders>false</requestHeaders>
-            <responseDataOnError>false</responseDataOnError>
-            <saveAssertionResultsFailureMessage>false</saveAssertionResultsFailureMessage>
-            <assertionsResultsToSave>0</assertionsResultsToSave>
             <bytes>true</bytes>
             <url>true</url>
+            <fieldNames>true</fieldNames>
           </value>
         </objProp>
         <stringProp name="filename">C:\Users\lssg0\Desktop\resultados_confidencialidad.jtl</stringProp>
       </ResultCollector>
       <hashTree/>
+
     </hashTree>
   </hashTree>
 </jmeterTestPlan>
