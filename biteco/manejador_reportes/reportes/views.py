@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from .logic.reportes_logic import obtener_reporte_y_notificar, obtener_empresa_de_proyecto
 from .logic.log_client import registrar_accion
+import jwt as pyjwt
 
 # IPs bloqueadas (Revoke Access Handler en memoria)
 MAX_INTENTOS = 1
@@ -9,13 +10,37 @@ _usuarios_bloqueados = set()
 _intentos_fallidos = {}
 
 
+def decodificar_jwt(request):
+    """
+    Decodifica el JWT del header Authorization sin verificar firma.
+    El token tiene formato real (header.payload.signature) pero
+    la firma no se valida — solo se extrae el payload.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    
+    if not auth_header.startswith("Bearer "):
+        return {"user_id": "anon", "empresa_id": None}
+    
+    token = auth_header.split(" ")[1]
+    
+    try:
+        # decode sin verificar firma — experimento sin Cognito real
+        payload = pyjwt.decode(
+            token,
+            options={"verify_signature": False},
+            algorithms=["HS256"]
+        )
+        return {
+            "user_id": payload.get("sub", "anon"),
+            "empresa_id": payload.get("empresa_id", None),
+            "role": payload.get("role", "user"),
+        }
+    except Exception:
+        return {"user_id": "anon", "empresa_id": None}
+
+
 def get_user(request):
-    return {
-        "user_id": request.headers.get("X-User", "anon"),
-        "role":    request.headers.get("X-Role", "user"),
-        # X-Empresa-Id: empresa a la que pertenece el usuario autenticado
-        "empresa_id": request.headers.get("X-Empresa-Id", None),
-    }
+    return decodificar_jwt(request)
 
 
 def get_client_ip(request):
