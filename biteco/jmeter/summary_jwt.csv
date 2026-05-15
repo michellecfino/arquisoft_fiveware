@@ -1,0 +1,4 @@
+Label,# Samples,Average,Min,Max,Std. Dev.,Error %,Throughput,Received KB/sec,Sent KB/sec,Avg. Bytes
+GET Reporte Autorizado,5000,247,171,1183,89.63,0.000%,41.60530,28.42,14.11,699.4
+GET Reporte No Autorizado,5000,247,165,868,96.97,100.000%,41.60391,14.50,14.11,356.8
+TOTAL,10000,247,165,1183,93.37,50.000%,41.60391,21.46,14.11,528.1
