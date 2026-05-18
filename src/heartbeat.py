@@ -9,7 +9,7 @@ en memoria local (HeartbeatState) en lugar de Redis.
 
 Flujo:
   [Hilo Heartbeat] ── cada 1s ──► [Prueba conexión DB] ──► [Memoria local]
-                                                               │
+                                                              │
                                   ┌───────────────────────────┘
                                   ▼
   [Request HTTP] ──► [views.py] ──► [get_db_availability()]
@@ -18,15 +18,6 @@ Flujo:
                               ▼                                 ▼
                     [Ejecuta consulta DB]             [graceful_failure]
 ===========================================================================
-
-Uso:
-    # Iniciar como proceso daemon (en manage.py o como comando de gestión):
-    from src.heartbeat import HeartbeatService
-    hb = HeartbeatService()
-    hb.start()   # inicia el hilo daemon
-
-    # O ejecutar directamente desde CLI:
-    python -m src.heartbeat
 """
 
 import logging
@@ -144,8 +135,7 @@ class HeartbeatService:
 
         return False
 
-    def _update_cache(self, is_available: bool) -> None:
-        """state(self, is_available: bool) -> None:
+    def _update_state(self, is_available: bool) -> None:
         """Persiste el estado de disponibilidad de la DB en memoria."""
         try:
             failure_reason = None if is_available else "connection_error"
@@ -155,19 +145,14 @@ class HeartbeatService:
                 is_available,
             )
         except Exception as state_exc:  # noqa: BLE001
-            logger.error("Heartbeat — no se pudo actualizar el estado: %s", stat
+            logger.error("Heartbeat — no se pudo actualizar el estado: %s", state_exc)
+
     # ------------------------------------------------------------------
     # Loop principal del hilo
     # ------------------------------------------------------------------
 
     def _run_loop(self) -> None:
-        """Bucle principal que ejecuta probe + cache update cada 1 segundo."""
-        logger.info(
-            "HeartbeatService iniciado — verificando DB cada %.1fs",
-            HEARTBEAT_INTERVAL_SECONDS,
-        )
-
-        while not self._stop_event.is_set():state update cada 1 segundo."""
+        """Bucle principal que ejecuta probe + state update cada 1 segundo."""
         logger.info(
             "HeartbeatService iniciado — verificando DB cada %.1fs",
             HEARTBEAT_INTERVAL_SECONDS,
@@ -175,7 +160,9 @@ class HeartbeatService:
 
         while not self._stop_event.is_set():
             is_available = self._probe_database()
-            self._update_stat
+            self._update_state(is_available)
+            time.sleep(HEARTBEAT_INTERVAL_SECONDS)
+
     # ------------------------------------------------------------------
     # API pública
     # ------------------------------------------------------------------
