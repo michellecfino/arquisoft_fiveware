@@ -1,0 +1,19 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: django-service
+    url: http://django_upstream
+    routes:
+      - name: reports-route
+        paths:
+          - /reports
+          - /api/reports
+
+upstreams:
+  - name: django_upstream
+    targets:
+      - target: 44.203.124.57:8000
+      - target: 98.94.94.147:8000
+      - target: 44.201.154.128:8000
+      - target: 54.167.93.104:8000
