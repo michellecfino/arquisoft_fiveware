@@ -47,12 +47,11 @@ Flujo completo:
 import logging
 import time
 
-from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views import View
 
-from .heartbeat import DB_AVAILABLE_CACHE_KEY
+from .heartbeat import get_db_availability
 from .services import get_project_report, ServiceUnavailableError
 
 logger = logging.getLogger("disponibilidad.views")
@@ -112,15 +111,12 @@ class ProjectReportView(View):
         # ------------------------------------------------------------------
         # PASO 1 — TÁCTICA 1: Consultar el Heartbeat
         # ------------------------------------------------------------------
-        # Leer el estado de la DB desde la caché Redis. Si el Heartbeat
-        # ha detectado que la DB no está disponible, evitamos ejecutar la
-        # consulta y retornamos inmediatamente la respuesta degradada.
-        # Esto reduce la latencia de fallo < 50ms (solo lectura de caché).
-        #
-        # default=True: comportamiento optimista si la caché no tiene datos
-        # (por ejemplo, primer arranque antes del primer latido del heartbeat).
+        # Leer el estado de la DB desde HeartbeatState (memoria local).
+        # Si el Heartbeat ha detectado que la DB no está disponible, evitamos
+        # ejecutar la consulta y retornamos inmediatamente la respuesta degradada.
+        # Esto reduce la latencia de fallo < 50ms (solo lectura de estado en memoria).
         # ------------------------------------------------------------------
-        db_is_available: bool = cache.get(DB_AVAILABLE_CACHE_KEY, default=True)
+        db_is_available, failure_reason = get_db_availability()
 
         if not db_is_available:
             elapsed = (time.monotonic() - request_start) * 1000

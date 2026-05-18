@@ -67,10 +67,16 @@ variable "rds_password" {
 }
 
 variable "ssh_password" {
-  description = "Password for the 'miche' user on EC2 instances (SSH PasswordAuthentication)."
+  description = "Password for SSH access (if PasswordAuthentication enabled)"
   type        = string
   sensitive   = true
   default     = "12345678"
+}
+
+variable "ssh_public_key_path" {
+  description = "Path to SSH public key file (e.g., ~/.ssh/id_rsa.pub)"
+  type        = string
+  default     = "~/.ssh/id_rsa.pub"
 }
 
 variable "ubuntu_ami" {

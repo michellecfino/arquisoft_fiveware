@@ -38,6 +38,7 @@ USE_X_FORWARDED_HOST = config("USE_X_FORWARDED_HOST", default=True, cast=bool)
 # ---------------------------------------------------------------------------
 
 INSTALLED_APPS = [
+    "django.contrib.admin",
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "django.contrib.sessions",
@@ -124,30 +125,21 @@ else:
     }
 
 # ---------------------------------------------------------------------------
-# CACHE — Redis (soporte para Táctica 1: Heartbeat)
+# CACHE — En memoria (LocalMemoryCache) sin Redis
 #
 # ===========================================================================
-# TÁCTICA 1: HEARTBEAT
+# TÁCTICA 1: HEARTBEAT (Refactorizado sin Redis)
 # ===========================================================================
-# La caché Redis almacena la llave 'db_available' (True/False) que el proceso
-# heartbeat.py actualiza cada 1 segundo. La vista en views.py consulta esta
-# llave antes de intentar cualquier operación de base de datos.
+# Ahora el heartbeat usa memoria local (variables en heartbeat.py con Lock)
+# en lugar de caché Redis. Esto simplifica la infra y evita dependencias.
 #
-# Flujo:
-#   heartbeat.py: guarda cache.set('db_available', True/False, timeout=5)
-#   views.py:     lee  cache.get('db_available', default=True)
+# La caché Django en memoria se usa para otros propósitos si es necesario.
 # ===========================================================================
 
-REDIS_URL = config("REDIS_URL", default="redis://127.0.0.1:6379/1")
-
-# En EC2 usamos Redis local (instalado por user_data) para almacenar el heartbeat.
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": REDIS_URL,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
     }
 }
 
