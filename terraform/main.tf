@@ -188,23 +188,7 @@ resource "aws_security_group" "sg_kong_gateway" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Ingress: Admin API (comentada por defecto)
-  # ingress {
-  #   description = "Kong admin API from local IP"
-  #   from_port   = 8001
-  #   to_port     = 8001
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["YOUR_LOCAL_IP/32"]
-  # }
-
-  # Egress: HTTP hacia Django servers
-  egress {
-    description     = "To Django servers"
-    from_port       = 8000
-    to_port         = 8000
-    protocol        = "tcp"
-    security_groups = [aws_security_group.sg_servidor_reportes.id]
-  }
+  # Egress: HTTP hacia Django servers (Removido inline para evitar ciclo)
 
   # Egress: HTTPS outbound
   egress {
@@ -251,14 +235,7 @@ resource "aws_security_group" "sg_servidor_reportes" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  # Egress: PostgreSQL hacia RDS
-  egress {
-    description     = "PostgreSQL to RDS"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.sg_database.id]
-  }
+  # Egress: PostgreSQL hacia RDS (Removido inline para evitar ciclo)
 
   # Egress: HTTPS outbound
   egress {
@@ -289,14 +266,7 @@ resource "aws_security_group" "sg_database" {
   description = "RDS PostgreSQL - restricted to Django servers only"
   vpc_id      = aws_vpc.main.id
 
-  # Ingress: PostgreSQL SOLO desde Django
-  ingress {
-    description     = "PostgreSQL from Django servers"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.sg_servidor_reportes.id]
-  }
+  # Ingress: PostgreSQL SOLO desde Django (Removido inline para evitar ciclo)
 
   # Egress: Permitir
   egress {
@@ -341,7 +311,7 @@ resource "aws_db_instance" "postgres" {
 
   db_subnet_group_name            = aws_db_subnet_group.rds_subnet_group.name
   vpc_security_group_ids          = [aws_security_group.sg_database.id]
-  publicly_accessible             = false # NO exponer a Internet
+  publicly_accessible             = false
   iam_database_authentication_enabled = true
 
   multi_az            = false
@@ -402,7 +372,7 @@ resource "aws_instance" "kong_gateway" {
 # =============================================================================
 
 resource "aws_instance" "django_servers" {
-  count                  = 4 # 4 instancias de Django
+  count                  = 4
   depends_on             = [aws_db_instance.postgres]
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t2.micro"
@@ -470,4 +440,39 @@ output "rds_endpoint" {
 output "rds_address" {
   description = "RDS PostgreSQL address only"
   value       = aws_db_instance.postgres.address
+}
+
+
+# =============================================================================
+# REGLAS INDEPENDIENTES PARA ROMPER EL CICLO DE DEPENDENCIAS
+# =============================================================================
+
+# 1. Permitir que Kong envíe tráfico a Django en el puerto 8000
+resource "aws_security_group_rule" "kong_to_django_egress" {
+  type                     = "egress"
+  from_port                = 8000
+  to_port                  = 8000
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.sg_kong_gateway.id
+  source_security_group_id = aws_security_group.sg_servidor_reportes.id
+}
+
+# 2. Permitir que Django envíe tráfico a la RDS en el puerto 5432
+resource "aws_security_group_rule" "django_to_rds_egress" {
+  type                     = "egress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.sg_servidor_reportes.id
+  source_security_group_id = aws_security_group.sg_database.id
+}
+
+# 3. Permitir que la RDS reciba el tráfico de Django en el puerto 5432
+resource "aws_security_group_rule" "rds_from_django_ingress" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.sg_database.id
+  source_security_group_id = aws_security_group.sg_servidor_reportes.id
 }
