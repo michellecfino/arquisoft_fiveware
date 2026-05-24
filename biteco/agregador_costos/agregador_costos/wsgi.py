@@ -1,5 +1,5 @@
 """
-WSGI config for manejador_reportes project.
+WSGI config for agregador_costos project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'manejador_reportes.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'agregador_costos.settings')
 
 application = get_wsgi_application()

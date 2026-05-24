@@ -3,7 +3,7 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "dev-manejador-reportes"
+SECRET_KEY = "dev-agregador-costos"
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
@@ -14,7 +14,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "reportes",
+    "agregacion",
 ]
 
 MIDDLEWARE = [
@@ -27,7 +27,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "manejador_reportes.urls"
+ROOT_URLCONF = "agregador_costos.urls"
 
 TEMPLATES = [
     {
@@ -44,7 +44,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "manejador_reportes.wsgi.application"
+WSGI_APPLICATION = "agregador_costos.wsgi.application"
 
 DATABASES = {
     "default": {

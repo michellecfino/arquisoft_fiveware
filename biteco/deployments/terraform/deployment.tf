@@ -1,507 +1,296 @@
 # =========================================================
-# Infraestructura INTEGRIDAD - BITECO
-# Arquitectura Segura Final
+# Infraestructura experimento de latencia - BITECO
 # =========================================================
 
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.5"
-    }
-  }
-}
-
-# =========================================================
-# VARIABLES
-# =========================================================
-
+# Variables
 variable "region" {
-  default = "us-east-1"
+  description = "AWS region for deployment"
+  type        = string
+  default     = "us-east-1"
 }
 
 variable "project_prefix" {
-  default = "biteco"
+  description = "Prefix used for naming AWS resources"
+  type        = string
+  default     = "biteco"
 }
 
 variable "instance_type" {
-  default = "t3.micro"
+  description = "EC2 instance type for application hosts"
+  type        = string
+  default     = "t2.micro"
 }
 
+# Provider
 provider "aws" {
   region = var.region
 }
 
-# =========================================================
-# VPC
-# =========================================================
+# Locals
+locals {
+  project_name = "${var.project_prefix}"
+  repository = "https://github.com/michellecfino/arquisoft_fiveware.git"
+  branch     = "latencia"
 
-resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-
-  tags = {
-    Name = "${var.project_prefix}-vpc"
+  common_tags = {
+    Project   = local.project_name
+    ManagedBy = "Terraform"
   }
+
 }
 
-# =========================================================
-# INTERNET GATEWAY
-# =========================================================
-
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-}
-
-# =========================================================
-# SUBNETS
-# =========================================================
-
-# PUBLICA -> KONG
-
-resource "aws_subnet" "public_subnet" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "${var.region}a"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "public-subnet"
-  }
-}
-
-# PRIVADA -> REPORTES + AUDIT
-
-resource "aws_subnet" "private_app_subnet" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = "${var.region}a"
-
-  tags = {
-    Name = "private-app-subnet"
-  }
-}
-
-# PRIVADAS -> DATABASES
-
-resource "aws_subnet" "private_db_subnet_1" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.10.0/24"
-  availability_zone = "${var.region}a"
-
-  tags = {
-    Name = "private-db-subnet-1"
-  }
-}
-
-resource "aws_subnet" "private_db_subnet_2" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.11.0/24"
-  availability_zone = "${var.region}b"
-
-  tags = {
-    Name = "private-db-subnet-2"
-  }
-}
-
-# =========================================================
-# ROUTE TABLE PUBLICA
-# =========================================================
-
-resource "aws_route_table" "public_rt" {
-  vpc_id = aws_vpc.main.id
-}
-
-resource "aws_route" "internet_route" {
-  route_table_id         = aws_route_table.public_rt.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.igw.id
-}
-
-resource "aws_route_table_association" "public_assoc" {
-  subnet_id      = aws_subnet.public_subnet.id
-  route_table_id = aws_route_table.public_rt.id
-}
-
-# =========================================================
-# UBUNTU AMI
-# =========================================================
-
+# Data Source. Busca la AMI más reciente de Ubuntu 24.04 usando los filtros especificados.
 data "aws_ami" "ubuntu" {
-  most_recent = true
+    most_recent = true
+    owners      = ["099720109477"]
 
-  owners = ["099720109477"]
+    filter {
+        name   = "name"
+        values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+    }
 
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
-  }
+    filter {
+        name   = "virtualization-type"
+        values = ["hvm"]
+    }
 }
 
 # =========================================================
-# SSH KEY
-# =========================================================
-# Ejecutar localmente:
-#
-# ssh-keygen -t rsa -b 4096 -f biteco-key
-#
-# Esto genera:
-# - biteco-key
-# - biteco-key.pub
+# Security Groups
 # =========================================================
 
-resource "aws_key_pair" "main" {
-  key_name   = "biteco-key"
-  public_key = file("biteco-key.pub")
-}
+resource "aws_security_group" "traffic_django" {
+  name        = "${var.project_prefix}-traffic-django"
+  description = "Allow application traffic on port 8080"
 
-# =========================================================
-# SECURITY GROUPS
-# =========================================================
-
-# =========================================================
-# KONG PUBLICO
-# =========================================================
-
-resource "aws_security_group" "api_sg" {
-  name   = "${var.project_prefix}-api-sg"
-  vpc_id = aws_vpc.main.id
-
-  # API PUBLICA
   ingress {
+    description = "HTTP access for Django services"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(local.common_tags, {
+        Name = "${var.project_prefix}-traffic-django"
+    })
+}
+
+resource "aws_security_group" "traffic_kong" {
+  name        = "${var.project_prefix}-traffic-kong"
+  description = "Expose Kong proxy and admin ports"
+
+  ingress {
+    description = "Kong proxy"
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # ADMIN API SOLO INTERNA
   ingress {
+    description = "Kong admin"
     from_port   = 8001
     to_port     = 8001
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
-  }
-
-  # SALIDA INTERNET -> Cognito
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "api-sg"
-  }
+  tags = merge(local.common_tags, {
+        Name = "${var.project_prefix}-traffic-kong"
+    })
 }
 
-# =========================================================
-# SSH
-# =========================================================
-
-resource "aws_security_group" "ssh_sg" {
-  name   = "${var.project_prefix}-ssh-sg"
-  vpc_id = aws_vpc.main.id
+resource "aws_security_group" "traffic_db" {
+  name        = "${var.project_prefix}-traffic-db"
+  description = "Allow PostgreSQL access"
 
   ingress {
+    description = "Traffic to PostgreSQL"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${var.project_prefix}-traffic-db"
+  })
+}
+
+resource "aws_security_group" "traffic_ssh" {
+  name        = "${var.project_prefix}-traffic-ssh"
+  description = "Allow SSH access"
+
+  ingress {
+    description = "SSH access from anywhere"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-
-    # SSH desde cualquier IP
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
+    description = "Allow all outbound traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "ssh-sg"
-  }
+  tags = merge(local.common_tags, {
+    Name = "${var.project_prefix}-traffic-ssh"
+  })
 }
 
 # =========================================================
-# REPORTES
-# =========================================================
-
-resource "aws_security_group" "services_sg" {
-  name   = "${var.project_prefix}-services-sg"
-  vpc_id = aws_vpc.main.id
-
-  # SOLO KONG
-  ingress {
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.api_sg.id]
-  }
-
-  # Comunicación interna reportes
-  ingress {
-    from_port = 8000
-    to_port   = 8000
-    protocol  = "tcp"
-    self      = true
-  }
-
-  tags = {
-    Name = "services-sg"
-  }
-}
-
-# =========================================================
-# AUDITORIA
-# =========================================================
-
-resource "aws_security_group" "audit_sg" {
-  name   = "${var.project_prefix}-audit-sg"
-  vpc_id = aws_vpc.main.id
-
-  # LOGS DESDE REPORTES
-  ingress {
-    from_port       = 8002
-    to_port         = 8002
-    protocol        = "tcp"
-    security_groups = [aws_security_group.services_sg.id]
-  }
-
-  # CONSULTAS DESDE KONG
-  ingress {
-    from_port       = 8002
-    to_port         = 8002
-    protocol        = "tcp"
-    security_groups = [aws_security_group.api_sg.id]
-  }
-
-  tags = {
-    Name = "audit-sg"
-  }
-}
-
-# =========================================================
-# AUDIT DB SG
-# =========================================================
-
-resource "aws_security_group" "audit_db_sg" {
-  name   = "${var.project_prefix}-audit-db-sg"
-  vpc_id = aws_vpc.main.id
-
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.audit_sg.id]
-  }
-
-  tags = {
-    Name = "audit-db-sg"
-  }
-}
-
-# =========================================================
-# REPORTES DB SG
-# =========================================================
-
-resource "aws_security_group" "reportes_db_sg" {
-  name   = "${var.project_prefix}-reportes-db-sg"
-  vpc_id = aws_vpc.main.id
-
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.services_sg.id]
-  }
-
-  tags = {
-    Name = "reportes-db-sg"
-  }
-}
-
-# =========================================================
-# KONG
+# EC2 - Kong
 # =========================================================
 
 resource "aws_instance" "kong" {
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = var.instance_type
-
-  subnet_id = aws_subnet.public_subnet.id
-
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
   associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.traffic_kong.id, aws_security_group.traffic_ssh.id]
 
-  key_name = aws_key_pair.main.key_name
+  user_data = <<-EOT
+              #!/bin/bash
+              sudo apt-get update -y
+              sudo apt-get install -y docker.io git
+              sudo systemctl enable docker
+              sudo systemctl start docker
 
-  vpc_security_group_ids = [
-    aws_security_group.api_sg.id,
-    aws_security_group.ssh_sg.id
-  ]
+              cd /home/ubuntu
+              if [ ! -d arquisoft_fiveware ]; then
+                git clone ${local.repository}
+              fi
 
-  tags = {
-    Name = "kong"
-  }
+              cd arquisoft_fiveware
+              git fetch origin ${local.branch}
+              git checkout ${local.branch}
+              git pull origin ${local.branch}
+
+              cd biteco_local
+              sed -i 's|<ip-privada-manejador-reportes>|${aws_instance.manejador_reportes.private_ip}|g' kong/kong.yml
+
+              sudo docker rm -f kong || true
+              sudo docker run -d --name kong \
+                -e KONG_DATABASE=off \
+                -e KONG_DECLARATIVE_CONFIG=/usr/local/kong/declarative/kong.yml \
+                -e KONG_PROXY_LISTEN=0.0.0.0:80 \
+                -e KONG_ADMIN_LISTEN=0.0.0.0:8001 \
+                -p 80:80 \
+                -p 8001:8001 \
+                -v /home/ubuntu/arquisoft_fiveware/biteco_local/kong/kong.yml:/usr/local/kong/declarative/kong.yml \
+                kong:3.6
+              EOT
+
+  tags = merge(local.common_tags, {
+    Name = "${var.project_prefix}-kong",
+    Role = "kong"
+  })
+
+  depends_on = [aws_instance.manejador_reportes]
+}
+
+
+
+# =========================================================
+# EC2 - Agregador Costos
+# =========================================================
+
+resource "aws_instance" "agregador_costos" {
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.traffic_django.id, aws_security_group.traffic_ssh.id]
+
+  user_data = <<-EOT
+              #!/bin/bash
+              sudo apt-get update -y
+              sudo apt-get install -y python3-pip git build-essential libpq-dev python3-dev
+
+              cd /home/ubuntu
+              if [ ! -d arquisoft_fiveware ]; then
+                git clone ${local.repository}
+              fi
+
+              cd arquisoft_fiveware
+              git fetch origin ${local.branch}
+              git checkout ${local.branch}
+              git pull origin ${local.branch}
+
+              cd biteco_local
+              sudo pip3 install --upgrade pip --break-system-packages
+              sudo pip3 install -r requirements.txt --break-system-packages
+              EOT
+
+  tags = merge(local.common_tags, {
+    Name = "${var.project_prefix}-agregador-costos",
+    Role = "agregador"
+  })
+
+  depends_on = [aws_db_instance.database]
 }
 
 # =========================================================
-# REPORTES (x4)
+# EC2 - Manejador Reportes
 # =========================================================
 
-resource "aws_instance" "reportes" {
-  count = 4
+resource "aws_instance" "manejador_reportes" {
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.traffic_django.id, aws_security_group.traffic_ssh.id]
 
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = var.instance_type
+  user_data = <<-EOT
+              #!/bin/bash
+              sudo apt-get update -y
+              sudo apt-get install -y python3-pip git build-essential libpq-dev python3-dev
 
-  subnet_id = aws_subnet.private_app_subnet.id
+              cd /home/ubuntu
+              if [ ! -d arquisoft_fiveware ]; then
+                git clone ${local.repository}
+              fi
 
-  associate_public_ip_address = false
+              cd arquisoft_fiveware
+              git fetch origin ${local.branch}
+              git checkout ${local.branch}
+              git pull origin ${local.branch}
 
-  key_name = aws_key_pair.main.key_name
+              cd biteco_local
+              sudo pip3 install --upgrade pip --break-system-packages
+              sudo pip3 install -r requirements.txt --break-system-packages
+              EOT
 
-  vpc_security_group_ids = [
-    aws_security_group.services_sg.id,
-    aws_security_group.ssh_sg.id
-  ]
+  tags = merge(local.common_tags, {
+    Name = "${var.project_prefix}-manejador-reportes",
+    Role = "reportes"
+  })
 
-  tags = {
-    Name = "reportes-${count.index + 1}"
-  }
+  depends_on = [aws_db_instance.database]
 }
 
 # =========================================================
-# AUDIT SERVER
-# =========================================================
-
-resource "aws_instance" "audit" {
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = var.instance_type
-
-  subnet_id = aws_subnet.private_app_subnet.id
-
-  associate_public_ip_address = false
-
-  key_name = aws_key_pair.main.key_name
-
-  vpc_security_group_ids = [
-    aws_security_group.audit_sg.id,
-    aws_security_group.ssh_sg.id
-  ]
-
-  tags = {
-    Name = "audit-server"
-  }
-}
-
-# =========================================================
-# DB SUBNET GROUP
-# =========================================================
-
-resource "aws_db_subnet_group" "db_subnets" {
-  name = "${var.project_prefix}-db-subnets"
-
-  subnet_ids = [
-    aws_subnet.private_db_subnet_1.id,
-    aws_subnet.private_db_subnet_2.id
-  ]
-}
-
-# =========================================================
-# RDS AUDITORIA
-# =========================================================
-
-resource "aws_db_instance" "audit_db" {
-  identifier = "audit-db"
-
-  engine         = "postgres"
-  engine_version = "16"
-
-  instance_class    = "db.t3.micro"
-  allocated_storage = 20
-
-  username = "postgres"
-  password = "biteco12345"
-
-  publicly_accessible = false
-
-  db_subnet_group_name = aws_db_subnet_group.db_subnets.name
-
-  vpc_security_group_ids = [
-    aws_security_group.audit_db_sg.id
-  ]
-
-  skip_final_snapshot = true
-
-  tags = {
-    Name = "audit-db"
-  }
-}
-
-# =========================================================
-# RDS REPORTES
-# =========================================================
-
-resource "aws_db_instance" "reportes_db" {
-  identifier = "reportes-db"
-
-  engine         = "postgres"
-  engine_version = "16"
-
-  instance_class    = "db.t3.micro"
-  allocated_storage = 20
-
-  username = "postgres"
-  password = "biteco12345"
-
-  db_name = "reportes"
-
-  publicly_accessible = false
-
-  db_subnet_group_name = aws_db_subnet_group.db_subnets.name
-
-  vpc_security_group_ids = [
-    aws_security_group.reportes_db_sg.id
-  ]
-
-  skip_final_snapshot = true
-
-  tags = {
-    Name = "reportes-db"
-  }
-}
-
-# =========================================================
-# OUTPUTS
+# Outputs
 # =========================================================
 
 output "kong_public_ip" {
-  value = aws_instance.kong.public_ip
+  description = "Public IP address for Kong"
+  value       = aws_instance.kong.public_ip
 }
 
-output "reportes_private_ips" {
-  value = aws_instance.reportes[*].private_ip
+output "agregador_costos_public_ip" {
+  description = "Public IP address for agregador costos"
+  value       = aws_instance.agregador_costos.public_ip
 }
 
-output "audit_private_ip" {
-  value = aws_instance.audit.private_ip
+output "manejador_reportes_public_ip" {
+  description = "Public IP address for manejador reportes"
+  value       = aws_instance.manejador_reportes.public_ip
 }
 
-output "reportes_db_endpoint" {
-  value = aws_db_instance.reportes_db.address
-}
-
-output "audit_db_endpoint" {
-  value = aws_db_instance.audit_db.address
+output "manejador_reportes_private_ip" {
+  description = "Private IP address for manejador reportes"
+  value       = aws_instance.manejador_reportes.private_ip
 }
