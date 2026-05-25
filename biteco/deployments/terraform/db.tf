@@ -1,22 +1,24 @@
-resource "aws_db_instance" "database" {
-  identifier             = "rds-postgresql-latencia"
-  engine                 = "postgres"
-  instance_class         = "db.t3.micro"
-  allocated_storage      = 20
-  username               = "postgres"
-  password               = "postgres123"
-  db_name                = "biteco"
-  skip_final_snapshot    = true
-  publicly_accessible    = true
-  vpc_security_group_ids = [aws_security_group.traffic_db.id]
+# Security Group para la base de datos
+resource "aws_security_group" "traffic_db" {
+  name        = "biteco-traffic-db"
+  description = "Allow PostgreSQL access"
 
-  tags = merge(local.common_tags, {
-    Name = "rds-postgresql-latencia",
-    Role = "database"
-  })
-}
+  ingress {
+    description = "Traffic to PostgreSQL"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-output "database_endpoint" {
-  description = "RDS PostgreSQL endpoint"
-  value       = aws_db_instance.database.address
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "biteco-traffic-db"
+  }
 }
