@@ -2,6 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Endpoint interno para ingesta de datos
-    path("internal/ingest/", views.ingest_data, name="ingest_data"),
+    path('ingest/', views.recibir_consumo, name='recibir_consumo'),
+    path('resumenes/', views.consultar_resumenes, name='consultar_resumenes'),
+    path('dashboard/metricas/', views.obtener_metricas_dashboard, name='metricas_dashboard'),
+    path('health/', views.health_check, name='health_check'),
 ]

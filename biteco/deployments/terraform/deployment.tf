@@ -1,296 +1,377 @@
 # =========================================================
-# Infraestructura experimento de latencia - BITECO
+# Terraform para Agregador de Costos con MongoDB
 # =========================================================
 
-# Variables
-variable "region" {
-  description = "AWS region for deployment"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "project_prefix" {
-  description = "Prefix used for naming AWS resources"
-  type        = string
-  default     = "biteco"
-}
-
-variable "instance_type" {
-  description = "EC2 instance type for application hosts"
-  type        = string
-  default     = "t2.micro"
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
 }
 
 # Provider
 provider "aws" {
-  region = var.region
+  region = "us-east-1"
 }
 
-# Locals
-locals {
-  project_name = "${var.project_prefix}"
-  repository = "https://github.com/michellecfino/arquisoft_fiveware.git"
-  branch     = "latencia"
-
-  common_tags = {
-    Project   = local.project_name
-    ManagedBy = "Terraform"
-  }
-
+# Variables
+variable "key_name" {
+  description = "Nombre de la key pair de AWS"
+  type        = string
+  default     = "agregador-key"  # Cambia por tu key pair existente
 }
 
-# Data Source. Busca la AMI más reciente de Ubuntu 24.04 usando los filtros especificados.
+variable "instance_type" {
+  description = "Tipo de instancia EC2"
+  type        = string
+  default     = "t2.micro"
+}
+
+# =========================================================
+# Data Sources
+# =========================================================
+
+# Obtener AMI de Ubuntu 24.04
 data "aws_ami" "ubuntu" {
-    most_recent = true
-    owners      = ["099720109477"]
+  most_recent = true
+  owners      = ["099720109477"]
 
-    filter {
-        name   = "name"
-        values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
-    }
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+  }
+}
 
-    filter {
-        name   = "virtualization-type"
-        values = ["hvm"]
-    }
+# Obtener VPC por defecto
+data "aws_vpc" "default" {
+  default = true
+}
+
+# Obtener subnets
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
 }
 
 # =========================================================
 # Security Groups
 # =========================================================
 
-resource "aws_security_group" "traffic_django" {
-  name        = "${var.project_prefix}-traffic-django"
-  description = "Allow application traffic on port 8080"
+resource "aws_security_group" "agregador_sg" {
+  name        = "agregador-costos-sg"
+  description = "Security group for Agregador de Costos"
+  vpc_id      = data.aws_vpc.default.id
 
+  # SSH
   ingress {
-    description = "HTTP access for Django services"
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(local.common_tags, {
-        Name = "${var.project_prefix}-traffic-django"
-    })
-}
-
-resource "aws_security_group" "traffic_kong" {
-  name        = "${var.project_prefix}-traffic-kong"
-  description = "Expose Kong proxy and admin ports"
-
-  ingress {
-    description = "Kong proxy"
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Kong admin"
-    from_port   = 8001
-    to_port     = 8001
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(local.common_tags, {
-        Name = "${var.project_prefix}-traffic-kong"
-    })
-}
-
-resource "aws_security_group" "traffic_db" {
-  name        = "${var.project_prefix}-traffic-db"
-  description = "Allow PostgreSQL access"
-
-  ingress {
-    description = "Traffic to PostgreSQL"
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(local.common_tags, {
-    Name = "${var.project_prefix}-traffic-db"
-  })
-}
-
-resource "aws_security_group" "traffic_ssh" {
-  name        = "${var.project_prefix}-traffic-ssh"
-  description = "Allow SSH access"
-
-  ingress {
-    description = "SSH access from anywhere"
+    description = "SSH from anywhere"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Django App
+  ingress {
+    description = "Django app"
+    from_port   = 8002
+    to_port     = 8002
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # MongoDB (opcional, solo si quieres acceso externo)
+  ingress {
+    description = "MongoDB"
+    from_port   = 27017
+    to_port     = 27017
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Salida todo
   egress {
-    description = "Allow all outbound traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = merge(local.common_tags, {
-    Name = "${var.project_prefix}-traffic-ssh"
-  })
+  tags = {
+    Name = "agregador-costos-sg"
+  }
 }
 
 # =========================================================
-# EC2 - Kong
+# EC2 Instance
 # =========================================================
 
-resource "aws_instance" "kong" {
+resource "aws_instance" "agregador" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
+  key_name                    = var.key_name
   associate_public_ip_address = true
-  vpc_security_group_ids      = [aws_security_group.traffic_kong.id, aws_security_group.traffic_ssh.id]
+  vpc_security_group_ids      = [aws_security_group.agregador_sg.id]
 
-  user_data = <<-EOT
-              #!/bin/bash
-              sudo apt-get update -y
-              sudo apt-get install -y docker.io git
-              sudo systemctl enable docker
-              sudo systemctl start docker
+  user_data = <<-EOF
+    #!/bin/bash
+    set -e
+    
+    echo "=== INSTALANDO AGREGADOR DE COSTOS ==="
+    
+    # Actualizar sistema
+    apt-get update -y
+    
+    # Instalar MongoDB
+    echo "Instalando MongoDB..."
+    apt-get install -y gnupg curl
+    curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
+       gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
+    echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+    apt-get update -y
+    apt-get install -y mongodb-org
+    systemctl start mongod
+    systemctl enable mongod
+    
+    # Instalar Python y dependencias
+    echo "Instalando Python..."
+    apt-get install -y python3-pip git
+    
+    # Crear directorio de la app
+    mkdir -p /opt/agregador
+    cd /opt/agregador
+    
+    # Instalar Django y librerías
+    pip3 install django djongo pymongo djangorestframework
+    
+    # Crear proyecto Django
+    django-admin startproject agregador_costos .
+    
+    # Configurar settings para MongoDB
+    cat > agregador_costos/settings.py << 'SETTINGS'
+    from pathlib import Path
+    
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    SECRET_KEY = 'django-insecure-key-2026'
+    DEBUG = True
+    ALLOWED_HOSTS = ['*']
+    
+    DATABASES = {
+        'default': {
+            'ENGINE': 'djongo',
+            'NAME': 'biteco_agregador',
+            'ENFORCE_SCHEMA': False,
+            'CLIENT': {
+                'host': 'mongodb://localhost:27017',
+            }
+        }
+    }
+    
+    INSTALLED_APPS = [
+        'django.contrib.admin',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
+        'rest_framework',
+        'agregacion',
+    ]
+    
+    MIDDLEWARE = [
+        'django.middleware.security.SecurityMiddleware',
+        'django.contrib.sessions.middleware.SessionMiddleware',
+        'django.middleware.common.CommonMiddleware',
+        'django.middleware.csrf.CsrfViewMiddleware',
+        'django.contrib.auth.middleware.AuthenticationMiddleware',
+        'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    ]
+    
+    ROOT_URLCONF = 'agregador_costos.urls'
+    WSGI_APPLICATION = 'agregador_costos.wsgi.application'
+    LANGUAGE_CODE = 'es-co'
+    TIME_ZONE = 'UTC'
+    USE_I18N = True
+    USE_TZ = True
+    STATIC_URL = 'static/'
+    DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+    SETTINGS
+    
+    # Crear app de agregacion
+    python3 manage.py startapp agregacion
+    
+    # Crear modelos
+    cat > agregacion/models.py << 'MODELS'
+    from django.db import models
+    
+    class Consumo(models.Model):
+        id_empresa = models.IntegerField()
+        id_area = models.IntegerField()
+        id_proyecto = models.IntegerField()
+        nombre_servicio = models.CharField(max_length=100)
+        costo = models.DecimalField(max_digits=14, decimal_places=4)
+        moneda = models.CharField(max_length=3)
+        anio = models.IntegerField()
+        mes = models.IntegerField()
+        fecha_consumo = models.DateTimeField(auto_now_add=True)
+        
+        class Meta:
+            indexes = [
+                models.Index(fields=['id_proyecto', 'anio', 'mes']),
+            ]
+    
+    class ResumenMensual(models.Model):
+        id_empresa = models.IntegerField()
+        id_area = models.IntegerField()
+        id_proyecto = models.IntegerField()
+        anio = models.IntegerField()
+        mes = models.IntegerField()
+        moneda = models.CharField(max_length=3)
+        costo_total = models.DecimalField(max_digits=14, decimal_places=4, default=0)
+        cantidad_registros = models.IntegerField(default=0)
+        
+        class Meta:
+            unique_together = [['id_empresa', 'id_area', 'id_proyecto', 'anio', 'mes']]
+            indexes = [
+                models.Index(fields=['id_proyecto', 'anio', 'mes']),
+            ]
+    MODELS
+    
+    # Crear vistas
+    cat > agregacion/views.py << 'VIEWS'
+    from rest_framework.decorators import api_view
+    from rest_framework.response import Response
+    from .models import Consumo, ResumenMensual
+    
+    @api_view(['POST'])
+    def ingest(request):
+        data = request.data
+        Consumo.objects.create(
+            id_empresa=data['id_empresa'],
+            id_area=data['id_area'],
+            id_proyecto=data['id_proyecto'],
+            nombre_servicio=data['nombre_servicio'],
+            costo=data['costo'],
+            moneda=data['moneda'],
+            anio=data['anio'],
+            mes=data['mes']
+        )
+        
+        resumen, _ = ResumenMensual.objects.get_or_create(
+            id_empresa=data['id_empresa'],
+            id_area=data['id_area'],
+            id_proyecto=data['id_proyecto'],
+            anio=data['anio'],
+            mes=data['mes'],
+            defaults={'moneda': data['moneda']}
+        )
+        
+        resumen.costo_total += data['costo']
+        resumen.cantidad_registros += 1
+        resumen.save()
+        
+        return Response({'ok': True})
+    
+    @api_view(['GET'])
+    def resumenes(request):
+        query = {}
+        if request.GET.get('proyecto'):
+            query['id_proyecto'] = int(request.GET.get('proyecto'))
+        if request.GET.get('anio'):
+            query['anio'] = int(request.GET.get('anio'))
+        
+        data = list(ResumenMensual.objects.filter(**query).values())
+        return Response({'data': data})
+    
+    @api_view(['GET'])
+    def health(request):
+        return Response({'status': 'ok', 'mongodb': 'connected'})
+    VIEWS
+    
+    # Crear URLs
+    cat > agregacion/urls.py << 'URLS'
+    from django.urls import path
+    from . import views
+    
+    urlpatterns = [
+        path('ingest/', views.ingest),
+        path('resumenes/', views.resumenes),
+        path('health/', views.health),
+    ]
+    URLS
+    
+    # Actualizar URLs principales
+    cat > agregador_costos/urls.py << 'MAIN'
+    from django.urls import path, include
+    
+    urlpatterns = [
+        path('api/', include('agregacion.urls')),
+    ]
+    MAIN
+    
+    # Ejecutar migraciones
+    python3 manage.py makemigrations
+    python3 manage.py migrate
+    
+    # Crear servicio systemd
+    cat > /etc/systemd/system/agregador.service << 'SERVICE'
+    [Unit]
+    Description=Agregador de Costos
+    After=network.target mongod.service
+    
+    [Service]
+    User=root
+    WorkingDirectory=/opt/agregador
+    ExecStart=/usr/local/bin/python3 /opt/agregador/manage.py runserver 0.0.0.0:8002
+    Restart=always
+    
+    [Install]
+    WantedBy=multi-user.target
+    SERVICE
+    
+    systemctl daemon-reload
+    systemctl enable agregador
+    systemctl start agregador
+    
+    echo "=== INSTALACION COMPLETADA ==="
+    echo "IP: $(curl -s ifconfig.me)"
+  EOF
 
-              cd /home/ubuntu
-              if [ ! -d arquisoft_fiveware ]; then
-                git clone ${local.repository}
-              fi
-
-              cd arquisoft_fiveware
-              git fetch origin ${local.branch}
-              git checkout ${local.branch}
-              git pull origin ${local.branch}
-
-              cd biteco_local
-              sed -i 's|<ip-privada-manejador-reportes>|${aws_instance.manejador_reportes.private_ip}|g' kong/kong.yml
-
-              sudo docker rm -f kong || true
-              sudo docker run -d --name kong \
-                -e KONG_DATABASE=off \
-                -e KONG_DECLARATIVE_CONFIG=/usr/local/kong/declarative/kong.yml \
-                -e KONG_PROXY_LISTEN=0.0.0.0:80 \
-                -e KONG_ADMIN_LISTEN=0.0.0.0:8001 \
-                -p 80:80 \
-                -p 8001:8001 \
-                -v /home/ubuntu/arquisoft_fiveware/biteco_local/kong/kong.yml:/usr/local/kong/declarative/kong.yml \
-                kong:3.6
-              EOT
-
-  tags = merge(local.common_tags, {
-    Name = "${var.project_prefix}-kong",
-    Role = "kong"
-  })
-
-  depends_on = [aws_instance.manejador_reportes]
-}
-
-
-
-# =========================================================
-# EC2 - Agregador Costos
-# =========================================================
-
-resource "aws_instance" "agregador_costos" {
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = var.instance_type
-  associate_public_ip_address = true
-  vpc_security_group_ids      = [aws_security_group.traffic_django.id, aws_security_group.traffic_ssh.id]
-
-  user_data = <<-EOT
-              #!/bin/bash
-              sudo apt-get update -y
-              sudo apt-get install -y python3-pip git build-essential libpq-dev python3-dev
-
-              cd /home/ubuntu
-              if [ ! -d arquisoft_fiveware ]; then
-                git clone ${local.repository}
-              fi
-
-              cd arquisoft_fiveware
-              git fetch origin ${local.branch}
-              git checkout ${local.branch}
-              git pull origin ${local.branch}
-
-              cd biteco_local
-              sudo pip3 install --upgrade pip --break-system-packages
-              sudo pip3 install -r requirements.txt --break-system-packages
-              EOT
-
-  tags = merge(local.common_tags, {
-    Name = "${var.project_prefix}-agregador-costos",
-    Role = "agregador"
-  })
-
-  depends_on = [aws_db_instance.database]
-}
-
-# =========================================================
-# EC2 - Manejador Reportes
-# =========================================================
-
-resource "aws_instance" "manejador_reportes" {
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = var.instance_type
-  associate_public_ip_address = true
-  vpc_security_group_ids      = [aws_security_group.traffic_django.id, aws_security_group.traffic_ssh.id]
-
-  user_data = <<-EOT
-              #!/bin/bash
-              sudo apt-get update -y
-              sudo apt-get install -y python3-pip git build-essential libpq-dev python3-dev
-
-              cd /home/ubuntu
-              if [ ! -d arquisoft_fiveware ]; then
-                git clone ${local.repository}
-              fi
-
-              cd arquisoft_fiveware
-              git fetch origin ${local.branch}
-              git checkout ${local.branch}
-              git pull origin ${local.branch}
-
-              cd biteco_local
-              sudo pip3 install --upgrade pip --break-system-packages
-              sudo pip3 install -r requirements.txt --break-system-packages
-              EOT
-
-  tags = merge(local.common_tags, {
-    Name = "${var.project_prefix}-manejador-reportes",
-    Role = "reportes"
-  })
-
-  depends_on = [aws_db_instance.database]
+  tags = {
+    Name = "agregador-costos"
+  }
 }
 
 # =========================================================
 # Outputs
 # =========================================================
 
-output "kong_public_ip" {
-  description = "Public IP address for Kong"
-  value       = aws_instance.kong.public_ip
+output "public_ip" {
+  description = "IP pública del Agregador de Costos"
+  value       = aws_instance.agregador.public_ip
 }
 
-output "agregador_costos_public_ip" {
-  description = "Public IP address for agregador costos"
-  value       = aws_instance.agregador_costos.public_ip
+output "service_url" {
+  description = "URL del servicio"
+  value       = "http://${aws_instance.agregador.public_ip}:8002"
 }
 
-output "manejador_reportes_public_ip" {
-  description = "Public IP address for manejador reportes"
-  value       = aws_instance.manejador_reportes.public_ip
+output "health_check" {
+  description = "Endpoint de health check"
+  value       = "http://${aws_instance.agregador.public_ip}:8002/api/health/"
 }
 
-output "manejador_reportes_private_ip" {
-  description = "Private IP address for manejador reportes"
-  value       = aws_instance.manejador_reportes.private_ip
+output "ingest_endpoint" {
+  description = "Endpoint para enviar datos"
+  value       = "http://${aws_instance.agregador.public_ip}:8002/api/ingest/"
+}
+
+output "ssh_command" {
+  description = "Comando para conectarse por SSH"
+  value       = "ssh -i ${var.key_name}.pem ubuntu@${aws_instance.agregador.public_ip}"
 }
