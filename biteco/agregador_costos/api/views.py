@@ -5,8 +5,7 @@ import pymongo
 
 client = pymongo.MongoClient('mongodb://172.31.23.83:27017/')
 db = client['biteco_db']
-resumenes = db['resumenes']
-consumos = db['consumos']
+resumenes = db['resumen_mensual_costos']
 
 @csrf_exempt
 def ingest(request):
