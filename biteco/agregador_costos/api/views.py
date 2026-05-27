@@ -12,18 +12,7 @@ def ingest(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            
-            consumo = {
-                'id_empresa': data['id_empresa'],
-                'id_proyecto': data['id_proyecto'],
-                'nombre_servicio': data['nombre_servicio'],
-                'costo': data['costo'],
-                'moneda': data['moneda'],
-                'anio': data['anio'],
-                'mes': data['mes']
-            }
-            consumos.insert_one(consumo)
-            
+
             resumenes.update_one(
                 {
                     'id_empresa': data['id_empresa'],
@@ -32,13 +21,13 @@ def ingest(request):
                     'mes': data['mes']
                 },
                 {
-                    '$inc': {'costo_total': data['costo'], 'cantidad': 1},
+                    '$inc': {'costo_total': data['costo'], 'cantidad_registros': 1},
                     '$set': {'moneda': data['moneda']}
                 },
                 upsert=True
             )
             
-            return JsonResponse({'ok': True, 'message': 'Consumo registrado'})
+            return JsonResponse({'ok': True, 'message': 'Resumen actualizado'})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
     
