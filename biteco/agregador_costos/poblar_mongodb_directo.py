@@ -3,7 +3,7 @@ import random
 from datetime import datetime
 
 # Conexión a MongoDB
-client = pymongo.MongoClient('mongodb://172.31.23.83:27017/')
+client = pymongo.MongoClient('mongodb://localhost:27017/')
 db = client['biteco_db']
 resumenes = db['resumen_mensual_costos']  # ← Nombre corregido
 

@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import pymongo
 
-client = pymongo.MongoClient('mongodb://172.31.23.83:27017/')
+client = pymongo.MongoClient('mongodb://localhost:27017/')
 db = client['biteco_db']
 resumenes = db['resumen_mensual_costos']
 
