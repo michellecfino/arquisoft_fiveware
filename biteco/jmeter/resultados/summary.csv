@@ -1,0 +1,4 @@
+Label,# Samples,Average,Min,Max,Std. Dev.,Error %,Throughput,Received KB/sec,Sent KB/sec,Avg. Bytes
+GET Reporte Financiero,250,180,151,218,9.26,0.000%,8.32085,4.69,10.52,577.2
+GET Reporte Tecnico,250,177,153,385,16.66,100.000%,8.31587,2.98,10.41,367.0
+TOTAL,500,179,151,385,13.59,50.000%,8.31808,3.83,10.46,472.1
