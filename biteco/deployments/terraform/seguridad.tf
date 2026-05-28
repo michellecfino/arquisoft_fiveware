@@ -95,33 +95,30 @@ resource "aws_instance" "seguridad" {
     apt-get update -y
     apt-get install -y curl git
 
-    # Instalar Node.js 20
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
     apt-get install -y nodejs
 
-    # Clonar repo
     cd /opt
-    git clone -b seguridad-s4 https://github.com/michellecfino/arquisoft_fiveware.git
+    git clone -b seguridad https://github.com/michellecfino/arquisoft_fiveware.git
     cd arquisoft_fiveware/biteco/servicio_seguridad
 
     npm install
-
-    # Variables de entorno (se actualizan después del apply)
-    cat > /opt/.env << 'ENVEOF'
-    COGNITO_REGION=${aws_cognito_user_pool.biteco_pool.id != "" ? "us-east-1" : "us-east-1"}
-    COGNITO_USER_POOL=${aws_cognito_user_pool.biteco_pool.id}
-    GRUPO_PERMITIDO=financiero
-    PORT=3000
-    ENVEOF
-
-    # Instalar pm2 y arrancar
     npm install -g pm2
+
+    cat > /opt/env_seguridad.sh << 'ENVEOF'
+export COGNITO_REGION="us-east-1"
+export COGNITO_USER_POOL="${aws_cognito_user_pool.biteco_pool.id}"
+export GRUPO_PERMITIDO="financiero"
+export PORT="3000"
+ENVEOF
+
+    source /opt/env_seguridad.sh
     pm2 start src/index.js --name seguridad \
       --env COGNITO_REGION=us-east-1 \
-      --env COGNITO_USER_POOL="${aws_cognito_user_pool.biteco_pool.id}" \
+      --env "COGNITO_USER_POOL=${aws_cognito_user_pool.biteco_pool.id}" \
       --env GRUPO_PERMITIDO=financiero \
       --env PORT=3000
-    pm2 startup
+    pm2 startup systemd -u ubuntu --hp /home/ubuntu
     pm2 save
 
     echo "=== SERVICIO DE SEGURIDAD DESPLEGADO ==="
