@@ -1,8 +1,20 @@
 _format_version: "2.1"
 
 services:
-  - host: reportes_upstream
-    name: manejador_reportes_service
+  # Servicio de Seguridad — valida el JWT
+  - name: seguridad_service
+    host: SEGURIDAD_IP  # se reemplaza con el output de Terraform
+    port: 3000
+    protocol: http
+    routes:
+      - name: validar_token
+        paths:
+          - /validar
+        strip_path: false
+
+  # Manejador de Reportes
+  - name: manejador_reportes_service
+    host: reportes_upstream
     protocol: http
     routes:
       - name: manejador_reportes
@@ -14,5 +26,5 @@ services:
 upstreams:
   - name: reportes_upstream
     targets:
-      - target: 172.31.18.211:8080
+      - target: REPORTES_IP:8080  # se reemplaza con el output de Terraform
         weight: 100
