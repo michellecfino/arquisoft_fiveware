@@ -35,16 +35,16 @@ resource "aws_cognito_user_pool_client" "biteco_client" {
   id_token_validity = 1
 }
 
-resource "aws_cognito_user_pool_group" "financiero" {
+resource "aws_cognito_user_group" "financiero" {
   name         = "financiero"
   user_pool_id = aws_cognito_user_pool.biteco_pool.id
   description  = "Grupo con acceso a reportes financieros"
 }
 
-resource "aws_cognito_user_pool_group" "tecnico" {
+resource "aws_cognito_user_group" "tecnico" {
   name         = "tecnico"
   user_pool_id = aws_cognito_user_pool.biteco_pool.id
-  description  = "Grupo técnico sin acceso a reportes financieros"
+  description  = "Grupo tecnico sin acceso a reportes financieros"
 }
 
 # ── Security Group Servicio de Seguridad ───────────────
