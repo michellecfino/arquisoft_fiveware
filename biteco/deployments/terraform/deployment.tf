@@ -1,5 +1,6 @@
 # =========================================================
 # Terraform para Agregador de Costos con MongoDB
+# y Servidor de Reportes con PostgreSQL
 # =========================================================
 
 terraform {
@@ -48,6 +49,7 @@ data "aws_subnets" "default" {
   }
 }
 
+# ── Security Group Agregador ───────────────────────────
 resource "aws_security_group" "agregador_sg" {
   name        = "agregador-costos-sg"
   description = "Security group for Agregador de Costos"
@@ -87,6 +89,39 @@ resource "aws_security_group" "agregador_sg" {
   tags = { Name = "agregador-costos-sg" }
 }
 
+# ── Security Group Servidor de Reportes ───────────────
+resource "aws_security_group" "reportes_sg" {
+  name        = "biteco-reportes-sg"
+  description = "Servidor de Reportes Django"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Django Reportes"
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "biteco-reportes-sg" }
+}
+
+# ── EC2 Agregador de Costos ────────────────────────────
 resource "aws_instance" "agregador" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
@@ -97,12 +132,8 @@ resource "aws_instance" "agregador" {
   user_data = <<-EOF
     #!/bin/bash
     set -e
-    
-    echo "=== DESPLEGANDO AGREGADOR DE COSTOS ==="
-    
-    # Instalar MongoDB
     apt-get update -y
-    apt-get install -y gnupg curl
+    apt-get install -y gnupg curl git python3-pip
     curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
        gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
     echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
@@ -110,23 +141,12 @@ resource "aws_instance" "agregador" {
     apt-get install -y mongodb-org
     systemctl start mongod
     systemctl enable mongod
-    
-    # Configurar MongoDB para acceso externo
     sed -i 's/bindIp: 127.0.0.1/bindIp: 0.0.0.0/' /etc/mongod.conf
     systemctl restart mongod
-    
-    # Instalar Python
-    apt-get install -y python3-pip git
-    
-    # Clonar repositorio
     cd /opt
-    git clone -b latencia2 https://github.com/michellecfino/arquisoft_fiveware.git
+    git clone -b seguridad https://github.com/michellecfino/arquisoft_fiveware.git
     cd arquisoft_fiveware/biteco/agregador_costos
-    
-    # Instalar dependencias
-    pip3 install -r ../requirements.txt
-    
-    # Crear índice compuesto en MongoDB
+    pip3 install -r ../requirements.txt --break-system-packages
     mongosh --eval '
       db = db.getSiblingDB("biteco_db");
       db.createCollection("resumen_mensual_costos");
@@ -134,22 +154,65 @@ resource "aws_instance" "agregador" {
         "id_empresa": 1, "id_area": 1, "id_proyecto": 1, "anio": 1, "mes": 1
       });
     '
-    
-    # Poblar base de datos
     python3 -c "exec(open('poblar_mongodb_directo.py').read())"
-    
-    # Iniciar servidor
-    nohup python3 manage.py runserver 0.0.0.0:8002 > /tmp/django.log 2>&1 &
-    
-    echo "=== DESPLIEGUE COMPLETADO ==="
-    echo "IP: $(curl -s ifconfig.me)"
+    nohup python3 manage.py runserver 0.0.0.0:8002 > /tmp/agregador.log 2>&1 &
   EOF
 
   tags = { Name = "agregador-costos" }
 }
 
+# ── EC2 Servidor de Reportes ───────────────────────────
+resource "aws_instance" "reportes" {
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
+  key_name                    = var.key_name
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.reportes_sg.id]
+
+  user_data = <<-EOF
+    #!/bin/bash
+    set -e
+    apt-get update -y
+    apt-get install -y python3-pip git
+    cd /opt
+    git clone -b seguridad https://github.com/michellecfino/arquisoft_fiveware.git
+    cd arquisoft_fiveware/biteco
+    pip3 install -r requirements.txt --break-system-packages
+    cd manejador_reportes
+    cat > manejador_reportes/settings.py << 'SETTEOF'
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent.parent
+SECRET_KEY = "dev-manejador-reportes"
+DEBUG = True
+ALLOWED_HOSTS = ["*"]
+INSTALLED_APPS = ["django.contrib.admin","django.contrib.auth","django.contrib.contenttypes","django.contrib.sessions","django.contrib.messages","django.contrib.staticfiles","reportes"]
+MIDDLEWARE = ["django.middleware.security.SecurityMiddleware","django.contrib.sessions.middleware.SessionMiddleware","django.middleware.common.CommonMiddleware","django.middleware.csrf.CsrfViewMiddleware","django.contrib.auth.middleware.AuthenticationMiddleware","django.contrib.messages.middleware.MessageMiddleware","django.middleware.clickjacking.XFrameOptionsMiddleware"]
+ROOT_URLCONF = "manejador_reportes.urls"
+TEMPLATES = [{"BACKEND":"django.template.backends.django.DjangoTemplates","DIRS":[],"APP_DIRS":True,"OPTIONS":{"context_processors":["django.template.context_processors.request","django.contrib.auth.context_processors.auth","django.contrib.messages.context_processors.messages"]}}]
+WSGI_APPLICATION = "manejador_reportes.wsgi.application"
+DATABASES = {"default":{"ENGINE":"django.db.backends.postgresql_psycopg2","NAME":"biteco","USER":"postgres","PASSWORD":"postgres123","HOST":"${aws_db_instance.bd_reportes.address}","PORT":"5432"}}
+LANGUAGE_CODE = "es-co"
+TIME_ZONE = "UTC"
+USE_I18N = True
+USE_TZ = True
+STATIC_URL = "static/"
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+SETTEOF
+    python3 manage.py migrate
+    nohup python3 manage.py runserver 0.0.0.0:8000 > /tmp/reportes.log 2>&1 &
+  EOF
+
+  depends_on = [aws_db_instance.bd_reportes]
+  tags = { Name = "servidor-reportes" }
+}
+
+# ── Outputs ────────────────────────────────────────────
 output "public_ip" {
   value = aws_instance.agregador.public_ip
+}
+
+output "reportes_ip" {
+  value = aws_instance.reportes.public_ip
 }
 
 output "service_url" {

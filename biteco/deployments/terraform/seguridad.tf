@@ -1,7 +1,6 @@
 # =========================================================
 # Terraform — Experimento Seguridad Sprint 4
-# Agrega Cognito + Servicio de Seguridad Node.js
-# sobre la infraestructura de latencia2
+# Cognito + Servicio de Seguridad Node.js + RDS
 # =========================================================
 
 # ── Cognito User Pool ──────────────────────────────────
@@ -16,7 +15,6 @@ resource "aws_cognito_user_pool" "biteco_pool" {
   }
 
   auto_verified_attributes = ["email"]
-
   tags = { Name = "biteco-seguridad-pool" }
 }
 
@@ -90,41 +88,43 @@ resource "aws_instance" "seguridad" {
   user_data = <<-EOF
     #!/bin/bash
     set -e
-    echo "=== DESPLEGANDO SERVICIO DE SEGURIDAD ==="
-
     apt-get update -y
     apt-get install -y curl git
-
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
     apt-get install -y nodejs
-
     cd /opt
     git clone -b seguridad https://github.com/michellecfino/arquisoft_fiveware.git
     cd arquisoft_fiveware/biteco/servicio_seguridad
-
     npm install
     npm install -g pm2
-
-    cat > /opt/env_seguridad.sh << 'ENVEOF'
-export COGNITO_REGION="us-east-1"
-export COGNITO_USER_POOL="${aws_cognito_user_pool.biteco_pool.id}"
-export GRUPO_PERMITIDO="financiero"
-export PORT="3000"
-ENVEOF
-
-    source /opt/env_seguridad.sh
-    pm2 start src/index.js --name seguridad \
-      --env COGNITO_REGION=us-east-1 \
-      --env "COGNITO_USER_POOL=${aws_cognito_user_pool.biteco_pool.id}" \
-      --env GRUPO_PERMITIDO=financiero \
-      --env PORT=3000
-    pm2 startup systemd -u ubuntu --hp /home/ubuntu
+    COGNITO_REGION=us-east-1 \
+    COGNITO_USER_POOL=${aws_cognito_user_pool.biteco_pool.id} \
+    GRUPO_PERMITIDO=financiero \
+    PORT=3000 \
+    pm2 start src/index.js --name seguridad
+    pm2 startup
     pm2 save
-
-    echo "=== SERVICIO DE SEGURIDAD DESPLEGADO ==="
   EOF
 
   tags = { Name = "servicio-seguridad" }
+}
+
+# ── RDS PostgreSQL para el Manejador de Reportes ──────
+resource "aws_db_instance" "bd_reportes" {
+  identifier        = "biteco-seg-bd-reportes"
+  engine            = "postgres"
+  engine_version    = "16"
+  instance_class    = "db.t3.micro"
+  allocated_storage = 20
+  db_name           = "biteco"
+  username          = "postgres"
+  password          = "postgres123"
+
+  vpc_security_group_ids = [aws_security_group.traffic_db.id]
+  skip_final_snapshot    = true
+  publicly_accessible    = true
+
+  tags = { Name = "biteco-seg-bd-reportes" }
 }
 
 # ── Outputs ────────────────────────────────────────────
@@ -143,4 +143,8 @@ output "seguridad_ip" {
 
 output "seguridad_url" {
   value = "http://${aws_instance.seguridad.public_ip}:3000"
+}
+
+output "bd_reportes_endpoint" {
+  value = aws_db_instance.bd_reportes.address
 }
