@@ -1,45 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
-    <TestPlan guiclass="TestPlanGui" testclass="TestPlan"
-              testname="Latencia Sin Seguridad BITECO">
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Latencia Sin Seguridad BITECO">
       <stringProp name="TestPlan.comments">Escenario A: directo al Servidor de Reportes sin Kong ni JWT</stringProp>
       <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
-      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
-      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments">
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments">
         <collectionProp name="Arguments.arguments">
           <elementProp name="HOST" elementType="Argument">
             <stringProp name="Argument.name">HOST</stringProp>
-            <stringProp name="Argument.value">IP_SERVIDOR_REPORTES</stringProp>
+            <stringProp name="Argument.value">3.208.17.123</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="PORT" elementType="Argument">
             <stringProp name="Argument.name">PORT</stringProp>
             <stringProp name="Argument.value">8080</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="THREADS" elementType="Argument">
             <stringProp name="Argument.name">THREADS</stringProp>
             <stringProp name="Argument.value">1000</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
         </collectionProp>
       </elementProp>
     </TestPlan>
     <hashTree>
-
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
-                   testname="Usuarios Financieros - Sin Seguridad">
-        <intProp name="ThreadGroup.num_threads">1000</intProp>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Usuarios Financieros - Sin Seguridad">
+        <intProp name="ThreadGroup.num_threads">5000</intProp>
         <intProp name="ThreadGroup.ramp_time">60</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
-        <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
           <stringProp name="LoopController.loops">1</stringProp>
           <boolProp name="LoopController.continue_forever">false</boolProp>
         </elementProp>
       </ThreadGroup>
       <hashTree>
-
-        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet"
-                    testname="CSV Financieros Latencia">
+        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Financieros Latencia" enabled="true">
           <stringProp name="filename">C:\Users\lssg0\OneDrive\Documentos\Uniandes\IQUI_DISC\Semestre X\Arquitectura de Software\arquisoft_fiveware\biteco\jmeter\data\financieros.csv</stringProp>
           <stringProp name="variableNames">username,grupo,id_proyecto,anio,mes,token</stringProp>
           <boolProp name="ignoreFirstLine">true</boolProp>
@@ -47,34 +44,32 @@
           <boolProp name="recycle">true</boolProp>
           <boolProp name="stopThread">false</boolProp>
           <stringProp name="shareMode">shareMode.all</stringProp>
+          <stringProp name="fileEncoding"></stringProp>
+          <boolProp name="quotedData">false</boolProp>
         </CSVDataSet>
         <hashTree/>
-
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui"
-                          testclass="HTTPSamplerProxy"
-                          testname="GET Reporte Sin Seguridad">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET Reporte Sin Seguridad" enabled="true">
+          <intProp name="HTTPSampler.connect_timeout">5000</intProp>
+          <intProp name="HTTPSampler.response_timeout">10000</intProp>
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.path">/reporte/${id_proyecto}/${anio}/${mes}/</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
-          <intProp name="HTTPSampler.connect_timeout">5000</intProp>
-          <intProp name="HTTPSampler.response_timeout">10000</intProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
           <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <DurationAssertion guiclass="DurationAssertionGui"
-                             testclass="DurationAssertion"
-                             testname="ASR menor a 300 ms">
+          <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="ASR menor a 300 ms" enabled="true">
             <stringProp name="DurationAssertion.duration">300</stringProp>
           </DurationAssertion>
           <hashTree/>
         </hashTree>
-
       </hashTree>
-
-      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector"
-                       testname="Summary Report">
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report">
         <boolProp name="ResultCollector.error_logging">false</boolProp>
         <objProp>
           <name>saveConfig</name>
@@ -87,15 +82,26 @@
             <code>true</code>
             <message>true</message>
             <threadName>true</threadName>
+            <dataType>false</dataType>
+            <encoding>false</encoding>
+            <assertions>false</assertions>
+            <subresults>false</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>false</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
             <bytes>true</bytes>
             <url>true</url>
-            <fieldNames>true</fieldNames>
           </value>
         </objProp>
         <stringProp name="filename">C:\Users\lssg0\Desktop\resultados_latencia_sin_seguridad.jtl</stringProp>
       </ResultCollector>
       <hashTree/>
-
     </hashTree>
   </hashTree>
 </jmeterTestPlan>

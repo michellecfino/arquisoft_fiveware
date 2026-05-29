@@ -27,7 +27,7 @@
 
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
                    testname="Usuarios Financieros - Con Seguridad">
-        <intProp name="ThreadGroup.num_threads">$1000</intProp>
+        <intProp name="ThreadGroup.num_threads">1000</intProp>
         <intProp name="ThreadGroup.ramp_time">60</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
