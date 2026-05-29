@@ -40,7 +40,7 @@
 
         <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet"
                     testname="CSV Financieros Latencia">
-          <stringProp name="filename">C:\Users\lssg0\OneDrive\Documentos\Uniandes\IQUI_DISC\Semestre X\Arquitectura de Software\arquisoft_fiveware\biteco\jmeter\data\financieros_latencia.csv</stringProp>
+          <stringProp name="filename">C:\Users\lssg0\OneDrive\Documentos\Uniandes\IQUI_DISC\Semestre X\Arquitectura de Software\arquisoft_fiveware\biteco\jmeter\data\financieros.csv</stringProp>
           <stringProp name="variableNames">username,grupo,id_proyecto,anio,mes,token</stringProp>
           <boolProp name="ignoreFirstLine">true</boolProp>
           <stringProp name="delimiter">,</stringProp>
