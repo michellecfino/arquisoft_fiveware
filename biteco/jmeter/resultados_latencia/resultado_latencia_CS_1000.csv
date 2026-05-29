@@ -1,0 +1,3 @@
+Label,# Samples,Average,Min,Max,Std. Dev.,Error %,Throughput,Received KB/sec,Sent KB/sec,Avg. Bytes
+GET Reporte Con Seguridad,1000,158,136,197,7.00,0.000%,16.63838,9.38,21.01,577.2
+TOTAL,1000,158,136,197,7.00,0.000%,16.63838,9.38,21.01,577.2
