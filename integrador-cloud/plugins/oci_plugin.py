@@ -1,4 +1,5 @@
 import random
+from typing import Dict, Any
 from plugins.base import CloudProviderPlugin
 
 class OCIPlugin(CloudProviderPlugin):
@@ -13,7 +14,7 @@ class OCIPlugin(CloudProviderPlugin):
     def __init__(self):
         self.services = ["Compute Instance", "Object Storage", "Autonomous DB"]
 
-    def generate_consumption(self) -> dict:
+    def generate_consumption(self) -> Dict[str, Any]:
         service = random.choice(self.services)
         cost = round(random.uniform(0.50, 300.00), 2)
         

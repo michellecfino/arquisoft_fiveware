@@ -1,6 +1,7 @@
 import os
 import logging
 import requests
+from typing import Dict, Any
 
 # Configuración básica de logging profesional
 logging.basicConfig(
@@ -23,13 +24,53 @@ class ConsumptionSender:
         # Obtener el endpoint desde las variables de entorno, usando el valor provisto por defecto si no está definido
         self.url = os.getenv("AGGREGATOR_URL", "http://44.203.209.23:8002/api/ingest/")
         self.timeout = 5.0  # Timeout de 5 segundos para evitar bloqueos prolongados (Alta disponibilidad)
+        
+        # Estructura contractual de datos requerida para el agregador
+        self._required_fields = {
+            "id_empresa": (int,),
+            "id_area": (int,),
+            "id_proyecto": (int,),
+            "nombre_servicio": (str,),
+            "costo": (float, int),
+            "moneda": (str,),
+            "anio": (int,),
+            "mes": (int,)
+        }
 
-    def send(self, provider_name: str, data: dict) -> bool:
+    def _validate_contract(self, data: Dict[str, Any]) -> bool:
+        """
+        Valida que el diccionario cumpla estrictamente con el contrato del agregador.
+        """
+        if not isinstance(data, dict):
+            logger.error("Data contract validation failed: payload is not a dictionary.")
+            return False
+            
+        for field, expected_types in self._required_fields.items():
+            if field not in data:
+                logger.error(f"Data contract validation failed: missing required field '{field}'.")
+                return False
+            
+            value = data[field]
+            if not isinstance(value, expected_types):
+                logger.error(
+                    f"Data contract validation failed for '{field}': "
+                    f"expected types {expected_types}, got {type(value).__name__}."
+                )
+                return False
+                
+        return True
+
+    def send(self, provider_name: str, data: Dict[str, Any]) -> bool:
         """
         Envía un payload de consumo normalizado a través de un HTTP POST.
         
-        Maneja errores de red como timeouts, conexiones rechazadas y códigos de estado inválidos.
+        Valida el contrato en frontera y maneja timeouts y errores de red.
         """
+        # Validación en frontera (Defensive design táctico para producción)
+        if not self._validate_contract(data):
+            logger.error(f"Data contract verification rejected sending payload for provider {provider_name}.")
+            return False
+
         logger.info(f"Sending {provider_name} consumption...")
         
         try:

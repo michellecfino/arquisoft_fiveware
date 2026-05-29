@@ -1,4 +1,5 @@
 import random
+from typing import Dict, Any
 from plugins.base import CloudProviderPlugin
 
 class AzurePlugin(CloudProviderPlugin):
@@ -13,7 +14,7 @@ class AzurePlugin(CloudProviderPlugin):
     def __init__(self):
         self.services = ["App Service", "Azure SQL", "Functions"]
 
-    def generate_consumption(self) -> dict:
+    def generate_consumption(self) -> Dict[str, Any]:
         service = random.choice(self.services)
         cost = round(random.uniform(0.01, 600.00), 2)
         

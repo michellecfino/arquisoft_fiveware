@@ -1,4 +1,5 @@
 import random
+from typing import Dict, Any
 from plugins.base import CloudProviderPlugin
 
 class AWSPlugin(CloudProviderPlugin):
@@ -13,7 +14,7 @@ class AWSPlugin(CloudProviderPlugin):
     def __init__(self):
         self.services = ["EC2", "S3", "Lambda"]
 
-    def generate_consumption(self) -> dict:
+    def generate_consumption(self) -> Dict[str, Any]:
         # Selección aleatoria de servicio
         service = random.choice(self.services)
         

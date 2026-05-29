@@ -2,9 +2,13 @@ import os
 import importlib
 import pkgutil
 import inspect
+import logging
+from typing import List
 from plugins.base import CloudProviderPlugin
 
-def load_plugins() -> list:
+logger = logging.getLogger("PluginLoader")
+
+def load_plugins() -> List[CloudProviderPlugin]:
     """
     Carga dinámicamente todos los plugins en el directorio 'plugins/' que implementen
     la clase abstracta CloudProviderPlugin.
@@ -37,6 +41,6 @@ def load_plugins() -> list:
                     plugins.append(obj())
         except Exception as e:
             # Si un plugin falla al cargarse, el sistema no se detiene, garantizando alta tolerancia a fallos
-            print(f"[WARNING] Error cargando el plugin '{module_name}': {e}")
+            logger.warning(f"Error cargando el plugin '{module_name}': {e}")
             
     return plugins

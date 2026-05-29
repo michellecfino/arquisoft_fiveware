@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Dict, Any
 
 class CloudProviderPlugin(ABC):
     """
@@ -27,7 +28,7 @@ class CloudProviderPlugin(ABC):
     """
 
     @abstractmethod
-    def generate_consumption(self) -> dict:
+    def generate_consumption(self) -> Dict[str, Any]:
         """
         Genera y retorna un diccionario normalizado que simula el consumo de la nube.
         

@@ -1,4 +1,5 @@
 import random
+from typing import Dict, Any
 from plugins.base import CloudProviderPlugin
 
 class GCPPlugin(CloudProviderPlugin):
@@ -13,7 +14,7 @@ class GCPPlugin(CloudProviderPlugin):
     def __init__(self):
         self.services = ["Compute Engine", "Cloud Storage", "BigQuery"]
 
-    def generate_consumption(self) -> dict:
+    def generate_consumption(self) -> Dict[str, Any]:
         service = random.choice(self.services)
         cost = round(random.uniform(0.10, 450.00), 2)
         
